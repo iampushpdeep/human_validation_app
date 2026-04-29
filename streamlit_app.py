@@ -154,7 +154,7 @@ def save_user_annotations(user_name, annotations):
         return False
 
 def get_all_users_annotations():
-    """Load all user annotations from files (for admin)"""
+    """Load all user annotations from files (for admin) - excludes admin user"""
     base_path = Path("human_validation_samples/intolerant")
     all_users_data = {}
     
@@ -169,6 +169,11 @@ def get_all_users_annotations():
             
             if isinstance(data, dict):
                 user_name = data.get("user_name", filepath.stem.replace("annotations_", ""))
+                
+                # Skip the admin user from the list
+                if user_name.lower() == "admin":
+                    continue
+                
                 timestamp = data.get("timestamp", "Unknown")
                 annotations = data.get("annotations", {})
                 
@@ -433,6 +438,7 @@ def show_login_page():
                     
                     # Check if this is admin user
                     if st.session_state.user_name.lower() == "admin":
+                        st.session_state.annotations = {}  # Admin should not have annotations
                         st.session_state.app_page = "admin"
                     else:
                         # Load this user's annotations from their file
@@ -1277,7 +1283,7 @@ elif st.session_state.app_page == "summary":
 else:
     show_login_page()
 
-# Auto-save functionality
-if st.session_state.user_name and st.session_state.auto_save_enabled and st.session_state.annotations:
+# Auto-save functionality (but not for admin user)
+if st.session_state.user_name and st.session_state.user_name.lower() != "admin" and st.session_state.auto_save_enabled and st.session_state.annotations:
     save_user_annotations(st.session_state.user_name, st.session_state.annotations)
     save_session_state()
