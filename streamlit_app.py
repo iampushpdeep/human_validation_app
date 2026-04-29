@@ -764,52 +764,47 @@ def show_evaluation_page():
         1: "❌ Not appropriate - Name is misleading or irrelevant"
     }
 
-    col1, col2 = st.columns([3, 1])
+    st.markdown("**Choose one rating:**")
+    
+    # Create 5 columns for radio-like buttons
+    col1, col2, col3, col4, col5 = st.columns(5)
+    
+    rating_selected = None
+    
     with col1:
-        # Don't pre-select a value - slider starts at middle but user must actively choose
-        ann["appropriateness_rating"] = st.slider(
-            "Rate the appropriateness:",
-            min_value=1,
-            max_value=5,
-            value=ann["appropriateness_rating"] if ann["appropriateness_rating"] else 3,
-            step=1,
-            key=f"appropriateness_{cluster_cid}",
-            label_visibility="collapsed"
-        )
-
+        if st.button("⭐\n**1 - Not\nAppropriate**", use_container_width=True, key=f"rate_1_{cluster_cid}"):
+            ann["appropriateness_rating"] = 1
+            st.rerun()
+    
     with col2:
-        score = ann["appropriateness_rating"]
-        if score is not None:
-            if score == 5:
-                st.markdown(f"<div style='text-align: center; font-size: 24px;'>⭐⭐⭐⭐⭐<br/><span style='font-size: 32px; font-weight: bold;'>{score}</span></div>", unsafe_allow_html=True)
-            elif score == 4:
-                st.markdown(f"<div style='text-align: center; font-size: 24px;'>⭐⭐⭐⭐<br/><span style='font-size: 32px; font-weight: bold;'>{score}</span></div>", unsafe_allow_html=True)
-            elif score == 3:
-                st.markdown(f"<div style='text-align: center; font-size: 24px;'>⭐⭐⭐<br/><span style='font-size: 32px; font-weight: bold;'>{score}</span></div>", unsafe_allow_html=True)
-            elif score == 2:
-                st.markdown(f"<div style='text-align: center; font-size: 24px;'>⭐⭐<br/><span style='font-size: 32px; font-weight: bold;'>{score}</span></div>", unsafe_allow_html=True)
-            elif score == 1:
-                st.markdown(f"<div style='text-align: center; font-size: 24px;'>⭐<br/><span style='font-size: 32px; font-weight: bold;'>{score}</span></div>", unsafe_allow_html=True)
+        if st.button("⭐⭐\n**2 - Somewhat\nInappropriate**", use_container_width=True, key=f"rate_2_{cluster_cid}"):
+            ann["appropriateness_rating"] = 2
+            st.rerun()
+    
+    with col3:
+        if st.button("⭐⭐⭐\n**3 - Neutral**", use_container_width=True, key=f"rate_3_{cluster_cid}"):
+            ann["appropriateness_rating"] = 3
+            st.rerun()
+    
+    with col4:
+        if st.button("⭐⭐⭐⭐\n**4 - Somewhat\nAppropriate**", use_container_width=True, key=f"rate_4_{cluster_cid}"):
+            ann["appropriateness_rating"] = 4
+            st.rerun()
+    
+    with col5:
+        if st.button("⭐⭐⭐⭐⭐\n**5 - Highly\nAppropriate**", use_container_width=True, key=f"rate_5_{cluster_cid}"):
+            ann["appropriateness_rating"] = 5
+            st.rerun()
 
     score = ann["appropriateness_rating"]
-
-    # Only show guide and options if user has selected a rating
+    
+    # Show selected rating with visual feedback
     if score is not None:
-        st.markdown("""
-| Score | Meaning |
-|-------|---------|
-| 5 | ✅ **Highly appropriate** - The name clearly and accurately represents all the content in this cluster. It's specific, unambiguous, and perfectly captures the essence of the posts. |
-| 4 | 👍 **Somewhat appropriate** - The name is mostly accurate and describes the general theme well, though there might be minor issues or slight room for improvement. |
-| 3 | 🤷 **Neutral** - The name is partially accurate but has noticeable gaps or ambiguities. Some posts fit well, others don't. Improvements would be beneficial. |
-| 2 | 👎 **Somewhat inappropriate** - The name has significant issues. Many posts don't fit well, or the name is confusing/misleading in important ways. |
-| 1 | ❌ **Not appropriate** - The name is misleading, irrelevant, or completely misrepresents the content. It fails to capture what these posts are about. |
-""")
-
         st.divider()
-        st.markdown(f"**{appropriateness_options[score]}**")
+        st.success(f"✅ You selected: {appropriateness_options[score]}")
         st.divider()
     else:
-        st.info("👆 Please select a rating above to continue")
+        st.info("👆 **Click one of the 5 options above to rate this cluster**")
         st.stop()
 
     # ============================================================================
