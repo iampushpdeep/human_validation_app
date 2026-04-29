@@ -243,7 +243,6 @@ def download_from_google_drive(folder_id, save_path="human_validation_samples"):
         st.error(f"Error downloading: {e}")
         return False
 
-@st.cache_data
 def load_clusters_from_validation_data():
     """Load clusters from human_validation_samples/intolerant directory"""
     base_path = Path("human_validation_samples/intolerant")
@@ -1279,50 +1278,33 @@ if not st.session_state.clusters:
     if clusters_data:
         st.session_state.clusters = clusters_data
     else:
-        # No clusters found - offer download option
-        st.session_state.show_download_prompt = True
+        # No clusters found - try to download from Google Drive if folder ID in secrets
+        try:
+            google_folder_id = st.secrets.get("GOOGLE_DRIVE_FOLDER_ID")
+            if google_folder_id:
+                with st.spinner("📥 Downloading cluster data from Google Drive..."):
+                    if download_from_google_drive(google_folder_id):
+                        # Reload clusters after download
+                        clusters_data = load_clusters_from_validation_data()
+                        if clusters_data:
+                            st.session_state.clusters = clusters_data
+                        st.success("✅ Clusters downloaded and loaded!")
+        except Exception as e:
+            pass  # Secrets not available or download failed
 
-# If clusters are missing, show setup page
+# If clusters still missing, show error
 if not st.session_state.clusters and st.session_state.app_page != "login":
     st.title("🏷️ Cluster Label Validator")
     st.divider()
-    st.warning("⚠️ No cluster data found!")
+    st.error("❌ No cluster data available!")
     st.markdown("""
-    The validation data needs to be downloaded from Google Drive first.
+    **Problem:** Cluster validation data could not be loaded or downloaded.
     
-    **Required data missing:**
-    - `human_validation_samples/intolerant/` folder
+    **To fix:**
+    1. Check that Google Drive folder ID is set in secrets: `GOOGLE_DRIVE_FOLDER_ID`
+    2. Verify the folder has the correct structure: `human_validation_samples/intolerant/`
+    3. Restart the app
     """)
-    
-    col1, col2 = st.columns(2)
-    with col1:
-        st.markdown("**📥 Need to download data?**")
-        google_folder_id = st.text_input(
-            "Enter Google Drive folder ID:",
-            placeholder="e.g., 1ABC2def3GHI4jkl5MNO6pqr7STU8vwx",
-            key="google_folder_input"
-        )
-        
-        if st.button("📥 Download from Google Drive", use_container_width=True):
-            if google_folder_id:
-                if download_from_google_drive(google_folder_id):
-                    st.success("✅ Downloaded! Reloading app...")
-                    st.rerun()
-                else:
-                    st.error("❌ Download failed. Check the folder ID.")
-            else:
-                st.error("Please enter a valid Google Drive folder ID")
-    
-    with col2:
-        st.markdown("**📋 How to find your folder ID:**")
-        st.markdown("""
-        1. Open Google Drive folder
-        2. Look at the URL:
-           `drive.google.com/drive/folders/`**FOLDER_ID**
-        3. Copy the FOLDER_ID part
-        4. Paste it above
-        """)
-    
     st.stop()
 
 # Title
