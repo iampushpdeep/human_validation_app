@@ -1,0 +1,287 @@
+[
+  {
+    "id": "cluster_001",
+    "data": {
+      "cluster_name": "Cryptocurrency Investment Promotions",
+      "cluster_id": "cluster_001",
+      "total_samples": 1,
+      "avg_cluster_probability": "0.500",
+      "baseline_label": "Crypto promotional content",
+      "examples": [
+        {
+          "cid": "cluster_001",
+          "cluster_name": "Cryptocurrency Investment Promotions",
+          "total_samples": 847,
+          "avg_cluster_probability": 0.92,
+          "baseline_label": "Crypto promotional content",
+          "examples": [
+            {
+              "cid": "bafyreibbwr2dww6oqjyz2mr2uo2i2zv5pmcwncvar6tlmv6rabpdw7xfja",
+              "uri": "at://did:plc:qw62kdztlzwttz4lwtdutksx/app.bsky.feed.post/3lnbyg2wafc27",
+              "text": "Get 500% returns guaranteed in 30 days! Bitcoin mining pools now open for registration. DM for exclusive early access!",
+              "image": "/images/crypto_ad_1.jpg",
+              "label": "crypto-promotion",
+              "subcluster": 2,
+              "cluster_probability": 0.98
+            },
+            {
+              "cid": "bafyreie5giwgubvu5alh4aathvxziy7o4orrurufsplfhsqkxuimulx6lm",
+              "uri": "at://did:plc:yxn5wdkhtxq4ceh3cb5g7vub/app.bsky.feed.post/3lpezpu6fec2h",
+              "text": "New altcoin launching next week - early investors seeing 10x gains. Limited time offer, act now!",
+              "image": "/images/crypto_ad_2.jpg",
+              "label": "crypto-promotion",
+              "subcluster": 2,
+              "cluster_probability": 0.95
+            },
+            {
+              "cid": "bafyreiabc123def456ghi789jkl012mno345pqr678stu901vwx",
+              "uri": "at://did:plc:abc123def456ghi789jkl/app.bsky.feed.post/3lnbe000aaa",
+              "text": "Passive income opportunity: Stake your crypto and earn 20% APY. Join our community now with zero fees!",
+              "image": "/images/crypto_ad_3.jpg",
+              "label": "crypto-promotion",
+              "subcluster": 1,
+              "cluster_probability": 0.88
+            },
+            {
+              "cid": "bafyredefghijklmno123pqrstuvwxyz456abc789def012ghi345jkl678mno",
+              "uri": "at://did:plc:xyz789abc123def456ghi/app.bsky.feed.post/3lnbe000bbb",
+              "text": "Elon just tweeted about this! DeFi token about to explode \ud83d\ude80 Get in before the pump",
+              "image": "/images/crypto_ad_4.jpg",
+              "label": "crypto-promotion",
+              "subcluster": 3,
+              "cluster_probability": 0.85
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "id": "cluster_002",
+    "data": {
+      "cluster_name": "Political Misinformation and Conspiracy",
+      "cluster_id": "cluster_002",
+      "total_samples": 1,
+      "avg_cluster_probability": "0.500",
+      "baseline_label": "Political disinformation",
+      "examples": [
+        {
+          "cid": "cluster_002",
+          "cluster_name": "Political Misinformation and Conspiracy",
+          "total_samples": 523,
+          "avg_cluster_probability": 0.87,
+          "baseline_label": "Political disinformation",
+          "examples": [
+            {
+              "cid": "bafyre000aaabbbcccdddeeefffggghhh111222333444555666777888",
+              "uri": "at://did:plc:qw62kdztlzwttz4lwtdutksx/app.bsky.feed.post/3lnbyg2w0001",
+              "text": "Election officials confirm: 2 million fake votes found in the swing states. Mainstream media won't report this!",
+              "image": "/images/misinformation_1.jpg",
+              "label": "political-misinformation",
+              "subcluster": 1,
+              "cluster_probability": 0.92
+            },
+            {
+              "cid": "bafyre111bbbcccdddeeefffggghhh111222333444555666777888999aaa",
+              "uri": "at://did:plc:yxn5wdkhtxq4ceh3cb5g7vub/app.bsky.feed.post/3lnbyg2w0002",
+              "text": "Inside source reveals: Government is using vaccines to track citizens through 5G. Leaked document attached!",
+              "image": "/images/misinformation_2.jpg",
+              "label": "political-misinformation",
+              "subcluster": 2,
+              "cluster_probability": 0.89
+            },
+            {
+              "cid": "bafyre222cccdddeeefffggghhh111222333444555666777888999aaa000bbb",
+              "uri": "at://did:plc:abc123def456ghi789jkl/app.bsky.feed.post/3lnbyg2w0003",
+              "text": "Proof: The moon landing never happened. NASA documents exposing the truth!",
+              "image": "/images/misinformation_3.jpg",
+              "label": "political-misinformation",
+              "subcluster": 3,
+              "cluster_probability": 0.81
+            },
+            {
+              "cid": "bafyre333dddeeefffggghhh111222333444555666777888999aaa000bbb111ccc",
+              "uri": "at://did:plc:xyz789abc123def456ghi/app.bsky.feed.post/3lnbyg2w0004",
+              "text": "According to my cousin who works there, the WHO is plotting to depopulate Africa. Wake up people!!",
+              "image": "/images/misinformation_4.jpg",
+              "label": "political-misinformation",
+              "subcluster": 2,
+              "cluster_probability": 0.76
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "id": "cluster_003",
+    "data": {
+      "cluster_name": "Graphic War/Conflict Imagery",
+      "cluster_id": "cluster_003",
+      "total_samples": 1,
+      "avg_cluster_probability": "0.500",
+      "baseline_label": "Graphic violence content",
+      "examples": [
+        {
+          "cid": "cluster_003",
+          "cluster_name": "Graphic War/Conflict Imagery",
+          "total_samples": 289,
+          "avg_cluster_probability": 0.91,
+          "baseline_label": "Graphic violence content",
+          "examples": [
+            {
+              "cid": "bafyre444eeeffggghhhii111222333444555666777888999aaa000bbb111c",
+              "uri": "at://did:plc:qw62kdztlzwttz4lwtdutksx/app.bsky.feed.post/3lnbyg2w0005",
+              "text": "Israeli army has been killing unarmed Palestinians in Gaza as they attempted to retrieve aid and return to their starving families.",
+              "image": "/images/conflict_1.jpg",
+              "label": "graphic-conflict",
+              "subcluster": 4,
+              "cluster_probability": 0.95
+            },
+            {
+              "cid": "bafyre555fffggghhhii111222333444555666777888999aaa000bbb111ccc222",
+              "uri": "at://did:plc:yxn5wdkhtxq4ceh3cb5g7vub/app.bsky.feed.post/3lnbyg2w0006",
+              "text": "Breaking: Civilian casualties reported in the region. Aftermath images are extremely disturbing.",
+              "image": "/images/conflict_2.jpg",
+              "label": "graphic-conflict",
+              "subcluster": 5,
+              "cluster_probability": 0.93
+            },
+            {
+              "cid": "bafyre666ggghhhii111222333444555666777888999aaa000bbb111ccc222ddd",
+              "uri": "at://did:plc:abc123def456ghi789jkl/app.bsky.feed.post/3lnbyg2w0007",
+              "text": "The humanitarian crisis deepens. Medical facilities overwhelmed beyond capacity. Documentary footage inside.",
+              "image": "/images/conflict_3.jpg",
+              "label": "graphic-conflict",
+              "subcluster": 4,
+              "cluster_probability": 0.88
+            },
+            {
+              "cid": "bafyre777hhhii111222333444555666777888999aaa000bbb111ccc222ddd444",
+              "uri": "at://did:plc:xyz789abc123def456ghi/app.bsky.feed.post/3lnbyg2w0008",
+              "text": "Warning: Disturbing weapon impact footage. Documenting the reality of modern conflict.",
+              "image": "/images/conflict_4.jpg",
+              "label": "graphic-conflict",
+              "subcluster": 3,
+              "cluster_probability": 0.85
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "id": "cluster_004",
+    "data": {
+      "cluster_name": "Cybersecurity Exploitation Tutorials",
+      "cluster_id": "cluster_004",
+      "total_samples": 1,
+      "avg_cluster_probability": "0.500",
+      "baseline_label": "Hacking/security exploits",
+      "examples": [
+        {
+          "cid": "cluster_004",
+          "cluster_name": "Cybersecurity Exploitation Tutorials",
+          "total_samples": 156,
+          "avg_cluster_probability": 0.89,
+          "baseline_label": "Hacking/security exploits",
+          "examples": [
+            {
+              "cid": "bafyre888ii111222333444555666777888999aaa000bbb111ccc222ddd444e",
+              "uri": "at://did:plc:qw62kdztlzwttz4lwtdutksx/app.bsky.feed.post/3lnbyg2w0009",
+              "text": "Here's how to bypass 2FA on most banking apps. Complete guide with code snippets. Step by step tutorial.",
+              "image": "/images/exploit_1.jpg",
+              "label": "exploitation-tutorial",
+              "subcluster": 1,
+              "cluster_probability": 0.94
+            },
+            {
+              "cid": "bafyre999jj222333444555666777888999aaa000bbb111ccc222ddd444eee555",
+              "uri": "at://did:plc:yxn5wdkhtxq4ceh3cb5g7vub/app.bsky.feed.post/3lnbyg2w0010",
+              "text": "SQL injection for beginners: Penetrate any unprotected database in 5 minutes. Free course link below.",
+              "image": "/images/exploit_2.jpg",
+              "label": "exploitation-tutorial",
+              "subcluster": 2,
+              "cluster_probability": 0.91
+            },
+            {
+              "cid": "bafyreaaa000kk333444555666777888999aaa000bbb111ccc222ddd444eee666",
+              "uri": "at://did:plc:abc123def456ghi789jkl/app.bsky.feed.post/3lnbyg2w0011",
+              "text": "DDoS attack framework - free download. Works against any target. Anonymity guaranteed. No logs kept.",
+              "image": "/images/exploit_3.jpg",
+              "label": "exploitation-tutorial",
+              "subcluster": 3,
+              "cluster_probability": 0.87
+            },
+            {
+              "cid": "bafyrebbb111ll444555666777888999aaa000bbb111ccc222ddd444eee666fff",
+              "uri": "at://did:plc:xyz789abc123def456ghi/app.bsky.feed.post/3lnbyg2w0012",
+              "text": "Malware development guide: Create undetectable trojans. Video tutorial with real-world examples.",
+              "image": "/images/exploit_4.jpg",
+              "label": "exploitation-tutorial",
+              "subcluster": 4,
+              "cluster_probability": 0.83
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "id": "cluster_005",
+    "data": {
+      "cluster_name": "Wellness and Supplement Marketing",
+      "cluster_id": "cluster_005",
+      "total_samples": 1,
+      "avg_cluster_probability": "0.500",
+      "baseline_label": "Health product promotion",
+      "examples": [
+        {
+          "cid": "cluster_005",
+          "cluster_name": "Wellness and Supplement Marketing",
+          "total_samples": 612,
+          "avg_cluster_probability": 0.84,
+          "baseline_label": "Health product promotion",
+          "examples": [
+            {
+              "cid": "bafyreccc222mm555666777888999aaa000bbb111ccc222ddd444eee666fff777",
+              "uri": "at://did:plc:qw62kdztlzwttz4lwtdutksx/app.bsky.feed.post/3lnbyg2w0013",
+              "text": "This one supplement doctors DON'T want you to know about. Cures everything from arthritis to memory loss! Limited stock.",
+              "image": "/images/supplement_1.jpg",
+              "label": "wellness-marketing",
+              "subcluster": 1,
+              "cluster_probability": 0.89
+            },
+            {
+              "cid": "bafyreddd333nn666777888999aaa000bbb111ccc222ddd444eee666fff777888",
+              "uri": "at://did:plc:yxn5wdkhtxq4ceh3cb5g7vub/app.bsky.feed.post/3lnbyg2w0014",
+              "text": "Detox your body in 7 days with our special protocol. See dramatic results. Money-back guarantee!",
+              "image": "/images/supplement_2.jpg",
+              "label": "wellness-marketing",
+              "subcluster": 2,
+              "cluster_probability": 0.81
+            },
+            {
+              "cid": "bafyreeee444oo777888999aaa000bbb111ccc222ddd444eee666fff777888999",
+              "uri": "at://did:plc:abc123def456ghi789jkl/app.bsky.feed.post/3lnbyg2w0015",
+              "text": "Celebrity shares her secret: Collagen supplement makes you look 20 years younger. I look 30! You need to try this.",
+              "image": "/images/supplement_3.jpg",
+              "label": "wellness-marketing",
+              "subcluster": 1,
+              "cluster_probability": 0.78
+            },
+            {
+              "cid": "bafyrefff555pp888999aaa000bbb111ccc222ddd444eee666fff777888999aaa",
+              "uri": "at://did:plc:xyz789abc123def456ghi/app.bsky.feed.post/3lnbyg2w0016",
+              "text": "Boost your metabolism with our patented formula. Lose 30 lbs in 30 days guaranteed. FDA approved (not really).",
+              "image": "/images/supplement_4.jpg",
+              "label": "wellness-marketing",
+              "subcluster": 3,
+              "cluster_probability": 0.75
+            }
+          ]
+        }
+      ]
+    }
+  }
+]

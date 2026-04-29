@@ -1,0 +1,16 @@
+[
+  {
+    "id": 1,
+    "cluster_id": "cluster_001",
+    "cluster_name": "Cluster 0",
+    "annotation": {
+      "appropriateness_rating": 4,
+      "follow_up_answers": {
+        "main_issue": "too_broad"
+      },
+      "suggested_name": "",
+      "notes": ""
+    },
+    "timestamp": "2026-04-28T14:45:12.560927"
+  }
+]

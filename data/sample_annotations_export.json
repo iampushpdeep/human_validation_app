@@ -1,0 +1,702 @@
+[
+  {
+    "id": 1,
+    "data": {
+      "cluster_id": "cluster_001",
+      "cluster_name": "Cryptocurrency Investment Promotions",
+      "total_samples": 847,
+      "avg_cluster_probability": "0.920",
+      "baseline_label": "Crypto promotional content",
+      "examples": [
+        {
+          "text": "Get 500% returns guaranteed in 30 days! Bitcoin mining pools now open for registration. DM for exclusive early access!",
+          "subcluster": 2,
+          "cluster_probability": 0.98
+        },
+        {
+          "text": "New altcoin launching next week - early investors seeing 10x gains. Limited time offer, act now!",
+          "subcluster": 2,
+          "cluster_probability": 0.95
+        },
+        {
+          "text": "Passive income opportunity: Stake your crypto and earn 20% APY. Join our community now with zero fees!",
+          "subcluster": 1,
+          "cluster_probability": 0.88
+        },
+        {
+          "text": "Elon just tweeted about this! DeFi token about to explode 🚀 Get in before the pump",
+          "subcluster": 3,
+          "cluster_probability": 0.85
+        }
+      ]
+    },
+    "annotations": [
+      {
+        "completed_by": 1,
+        "result": [
+          {
+            "value": {
+              "rating": 5
+            },
+            "type": "rating",
+            "name": "coherence",
+            "toName": "cluster_name"
+          },
+          {
+            "value": {
+              "rating": 4
+            },
+            "type": "rating",
+            "name": "specificity",
+            "toName": "cluster_name"
+          },
+          {
+            "value": {
+              "rating": 5
+            },
+            "type": "rating",
+            "name": "coverage",
+            "toName": "cluster_name"
+          },
+          {
+            "value": {
+              "rating": 5
+            },
+            "type": "rating",
+            "name": "interpretability",
+            "toName": "cluster_name"
+          },
+          {
+            "value": {
+              "choices": [
+                "correct"
+              ]
+            },
+            "type": "choices",
+            "name": "correctness",
+            "toName": "cluster_name"
+          },
+          {
+            "value": {
+              "text": ""
+            },
+            "type": "textarea",
+            "name": "suggested_label",
+            "toName": "cluster_name"
+          },
+          {
+            "value": {
+              "text": "Very clear examples of cryptocurrency promotional schemes."
+            },
+            "type": "textarea",
+            "name": "annotator_notes",
+            "toName": "cluster_name"
+          }
+        ]
+      },
+      {
+        "completed_by": 2,
+        "result": [
+          {
+            "value": {
+              "rating": 4
+            },
+            "type": "rating",
+            "name": "coherence",
+            "toName": "cluster_name"
+          },
+          {
+            "value": {
+              "rating": 4
+            },
+            "type": "rating",
+            "name": "specificity",
+            "toName": "cluster_name"
+          },
+          {
+            "value": {
+              "rating": 5
+            },
+            "type": "rating",
+            "name": "coverage",
+            "toName": "cluster_name"
+          },
+          {
+            "value": {
+              "rating": 4
+            },
+            "type": "rating",
+            "name": "interpretability",
+            "toName": "cluster_name"
+          },
+          {
+            "value": {
+              "choices": [
+                "correct"
+              ]
+            },
+            "type": "choices",
+            "name": "correctness",
+            "toName": "cluster_name"
+          },
+          {
+            "value": {
+              "text": ""
+            },
+            "type": "textarea",
+            "name": "suggested_label",
+            "toName": "cluster_name"
+          },
+          {
+            "value": {
+              "text": "Label is accurate. Some examples are scams, some are legit but exaggerated claims."
+            },
+            "type": "textarea",
+            "name": "annotator_notes",
+            "toName": "cluster_name"
+          }
+        ]
+      },
+      {
+        "completed_by": 3,
+        "result": [
+          {
+            "value": {
+              "rating": 5
+            },
+            "type": "rating",
+            "name": "coherence",
+            "toName": "cluster_name"
+          },
+          {
+            "value": {
+              "rating": 5
+            },
+            "type": "rating",
+            "name": "specificity",
+            "toName": "cluster_name"
+          },
+          {
+            "value": {
+              "rating": 4
+            },
+            "type": "rating",
+            "name": "coverage",
+            "toName": "cluster_name"
+          },
+          {
+            "value": {
+              "rating": 5
+            },
+            "type": "rating",
+            "name": "interpretability",
+            "toName": "cluster_name"
+          },
+          {
+            "value": {
+              "choices": [
+                "correct"
+              ]
+            },
+            "type": "choices",
+            "name": "correctness",
+            "toName": "cluster_name"
+          },
+          {
+            "value": {
+              "text": ""
+            },
+            "type": "textarea",
+            "name": "suggested_label",
+            "toName": "cluster_name"
+          },
+          {
+            "value": {
+              "text": "Perfect. This is definitely crypto investment hype."
+            },
+            "type": "textarea",
+            "name": "annotator_notes",
+            "toName": "cluster_name"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": 2,
+    "data": {
+      "cluster_id": "cluster_002",
+      "cluster_name": "Political Misinformation and Conspiracy",
+      "total_samples": 523,
+      "avg_cluster_probability": "0.870",
+      "baseline_label": "Political disinformation",
+      "examples": [
+        {
+          "text": "Election officials confirm: 2 million fake votes found in the swing states. Mainstream media won't report this!",
+          "subcluster": 1,
+          "cluster_probability": 0.92
+        },
+        {
+          "text": "Inside source reveals: Government is using vaccines to track citizens through 5G. Leaked document attached!",
+          "subcluster": 2,
+          "cluster_probability": 0.89
+        },
+        {
+          "text": "Proof: The moon landing never happened. NASA documents exposing the truth!",
+          "subcluster": 3,
+          "cluster_probability": 0.81
+        },
+        {
+          "text": "According to my cousin who works there, the WHO is plotting to depopulate Africa. Wake up people!!",
+          "subcluster": 2,
+          "cluster_probability": 0.76
+        }
+      ]
+    },
+    "annotations": [
+      {
+        "completed_by": 1,
+        "result": [
+          {
+            "value": {
+              "rating": 5
+            },
+            "type": "rating",
+            "name": "coherence",
+            "toName": "cluster_name"
+          },
+          {
+            "value": {
+              "rating": 3
+            },
+            "type": "rating",
+            "name": "specificity",
+            "toName": "cluster_name"
+          },
+          {
+            "value": {
+              "rating": 4
+            },
+            "type": "rating",
+            "name": "coverage",
+            "toName": "cluster_name"
+          },
+          {
+            "value": {
+              "rating": 4
+            },
+            "type": "rating",
+            "name": "interpretability",
+            "toName": "cluster_name"
+          },
+          {
+            "value": {
+              "choices": [
+                "incorrect"
+              ]
+            },
+            "type": "choices",
+            "name": "correctness",
+            "toName": "cluster_name"
+          },
+          {
+            "value": {
+              "choices": [
+                "too_broad"
+              ]
+            },
+            "type": "choices",
+            "name": "issue_type",
+            "toName": "cluster_name"
+          },
+          {
+            "value": {
+              "text": "Not all political misinformation. Election fraud claims, vaccine conspiracy, moon landing denial, depopulation plots are different themes."
+            },
+            "type": "textarea",
+            "name": "suggested_label",
+            "toName": "cluster_name"
+          },
+          {
+            "value": {
+              "text": "Mix of election fraud claims and general conspiracy theories."
+            },
+            "type": "textarea",
+            "name": "annotator_notes",
+            "toName": "cluster_name"
+          }
+        ]
+      },
+      {
+        "completed_by": 2,
+        "result": [
+          {
+            "value": {
+              "rating": 4
+            },
+            "type": "rating",
+            "name": "coherence",
+            "toName": "cluster_name"
+          },
+          {
+            "value": {
+              "rating": 3
+            },
+            "type": "rating",
+            "name": "specificity",
+            "toName": "cluster_name"
+          },
+          {
+            "value": {
+              "rating": 3
+            },
+            "type": "rating",
+            "name": "coverage",
+            "toName": "cluster_name"
+          },
+          {
+            "value": {
+              "rating": 3
+            },
+            "type": "rating",
+            "name": "interpretability",
+            "toName": "cluster_name"
+          },
+          {
+            "value": {
+              "choices": [
+                "incorrect"
+              ]
+            },
+            "type": "choices",
+            "name": "correctness",
+            "toName": "cluster_name"
+          },
+          {
+            "value": {
+              "choices": [
+                "too_broad"
+              ]
+            },
+            "type": "choices",
+            "name": "issue_type",
+            "toName": "cluster_name"
+          },
+          {
+            "value": {
+              "text": "Conspiracy theories and election fraud"
+            },
+            "type": "textarea",
+            "name": "suggested_label",
+            "toName": "cluster_name"
+          },
+          {
+            "value": {
+              "text": "Too broad grouping of different conspiracy types"
+            },
+            "type": "textarea",
+            "name": "annotator_notes",
+            "toName": "cluster_name"
+          }
+        ]
+      },
+      {
+        "completed_by": 3,
+        "result": [
+          {
+            "value": {
+              "rating": 3
+            },
+            "type": "rating",
+            "name": "coherence",
+            "toName": "cluster_name"
+          },
+          {
+            "value": {
+              "rating": 2
+            },
+            "type": "rating",
+            "name": "specificity",
+            "toName": "cluster_name"
+          },
+          {
+            "value": {
+              "rating": 3
+            },
+            "type": "rating",
+            "name": "coverage",
+            "toName": "cluster_name"
+          },
+          {
+            "value": {
+              "rating": 3
+            },
+            "type": "rating",
+            "name": "interpretability",
+            "toName": "cluster_name"
+          },
+          {
+            "value": {
+              "choices": [
+                "incorrect"
+              ]
+            },
+            "type": "choices",
+            "name": "correctness",
+            "toName": "cluster_name"
+          },
+          {
+            "value": {
+              "choices": [
+                "too_broad",
+                "wrong_theme"
+              ]
+            },
+            "type": "choices",
+            "name": "issue_type",
+            "toName": "cluster_name"
+          },
+          {
+            "value": {
+              "text": "General conspiracy theories - not just political"
+            },
+            "type": "textarea",
+            "name": "suggested_label",
+            "toName": "cluster_name"
+          },
+          {
+            "value": {
+              "text": "Includes non-political conspiracies like moon landing denial."
+            },
+            "type": "textarea",
+            "name": "annotator_notes",
+            "toName": "cluster_name"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": 3,
+    "data": {
+      "cluster_id": "cluster_003",
+      "cluster_name": "Graphic War/Conflict Imagery",
+      "total_samples": 289,
+      "avg_cluster_probability": "0.910",
+      "baseline_label": "Graphic violence content",
+      "examples": [
+        {
+          "text": "Israeli army has been killing unarmed Palestinians in Gaza as they attempted to retrieve aid and return to their starving families.",
+          "subcluster": 4,
+          "cluster_probability": 0.95
+        },
+        {
+          "text": "Breaking: Civilian casualties reported in the region. Aftermath images are extremely disturbing.",
+          "subcluster": 5,
+          "cluster_probability": 0.93
+        },
+        {
+          "text": "The humanitarian crisis deepens. Medical facilities overwhelmed beyond capacity. Documentary footage inside.",
+          "subcluster": 4,
+          "cluster_probability": 0.88
+        },
+        {
+          "text": "Warning: Disturbing weapon impact footage. Documenting the reality of modern conflict.",
+          "subcluster": 3,
+          "cluster_probability": 0.85
+        }
+      ]
+    },
+    "annotations": [
+      {
+        "completed_by": 1,
+        "result": [
+          {
+            "value": {
+              "rating": 4
+            },
+            "type": "rating",
+            "name": "coherence",
+            "toName": "cluster_name"
+          },
+          {
+            "value": {
+              "rating": 4
+            },
+            "type": "rating",
+            "name": "specificity",
+            "toName": "cluster_name"
+          },
+          {
+            "value": {
+              "rating": 4
+            },
+            "type": "rating",
+            "name": "coverage",
+            "toName": "cluster_name"
+          },
+          {
+            "value": {
+              "rating": 4
+            },
+            "type": "rating",
+            "name": "interpretability",
+            "toName": "cluster_name"
+          },
+          {
+            "value": {
+              "choices": [
+                "correct"
+              ]
+            },
+            "type": "choices",
+            "name": "correctness",
+            "toName": "cluster_name"
+          },
+          {
+            "value": {
+              "text": ""
+            },
+            "type": "textarea",
+            "name": "suggested_label",
+            "toName": "cluster_name"
+          },
+          {
+            "value": {
+              "text": "Appropriate label for highly sensitive content."
+            },
+            "type": "textarea",
+            "name": "annotator_notes",
+            "toName": "cluster_name"
+          }
+        ]
+      },
+      {
+        "completed_by": 2,
+        "result": [
+          {
+            "value": {
+              "rating": 4
+            },
+            "type": "rating",
+            "name": "coherence",
+            "toName": "cluster_name"
+          },
+          {
+            "value": {
+              "rating": 3
+            },
+            "type": "rating",
+            "name": "specificity",
+            "toName": "cluster_name"
+          },
+          {
+            "value": {
+              "rating": 4
+            },
+            "type": "rating",
+            "name": "coverage",
+            "toName": "cluster_name"
+          },
+          {
+            "value": {
+              "rating": 4
+            },
+            "type": "rating",
+            "name": "interpretability",
+            "toName": "cluster_name"
+          },
+          {
+            "value": {
+              "choices": [
+                "correct"
+              ]
+            },
+            "type": "choices",
+            "name": "correctness",
+            "toName": "cluster_name"
+          },
+          {
+            "value": {
+              "text": ""
+            },
+            "type": "textarea",
+            "name": "suggested_label",
+            "toName": "cluster_name"
+          },
+          {
+            "value": {
+              "text": "Covers the nature of the content well."
+            },
+            "type": "textarea",
+            "name": "annotator_notes",
+            "toName": "cluster_name"
+          }
+        ]
+      },
+      {
+        "completed_by": 3,
+        "result": [
+          {
+            "value": {
+              "rating": 5
+            },
+            "type": "rating",
+            "name": "coherence",
+            "toName": "cluster_name"
+          },
+          {
+            "value": {
+              "rating": 5
+            },
+            "type": "rating",
+            "name": "specificity",
+            "toName": "cluster_name"
+          },
+          {
+            "value": {
+              "rating": 4
+            },
+            "type": "rating",
+            "name": "coverage",
+            "toName": "cluster_name"
+          },
+          {
+            "value": {
+              "rating": 5
+            },
+            "type": "rating",
+            "name": "interpretability",
+            "toName": "cluster_name"
+          },
+          {
+            "value": {
+              "choices": [
+                "correct"
+              ]
+            },
+            "type": "choices",
+            "name": "correctness",
+            "toName": "cluster_name"
+          },
+          {
+            "value": {
+              "text": ""
+            },
+            "type": "textarea",
+            "name": "suggested_label",
+            "toName": "cluster_name"
+          },
+          {
+            "value": {
+              "text": "Excellent label. Captures exactly what these examples are about."
+            },
+            "type": "textarea",
+            "name": "annotator_notes",
+            "toName": "cluster_name"
+          }
+        ]
+      }
+    ]
+  }
+]
