@@ -182,6 +182,30 @@ def get_all_users_annotations():
     
     return all_users_data
 
+def delete_user_annotations(user_name):
+    """Delete a specific user's annotations file"""
+    filepath = get_user_annotation_file(user_name)
+    if filepath.exists():
+        try:
+            filepath.unlink()
+            return True
+        except:
+            return False
+    return False
+
+def delete_all_annotations():
+    """Delete all user annotation files"""
+    base_path = Path("human_validation_samples/intolerant")
+    if not base_path.exists():
+        return False
+    
+    try:
+        for filepath in base_path.glob("annotations_*.json"):
+            filepath.unlink()
+        return True
+    except:
+        return False
+
 def download_from_google_drive(folder_id, save_path="human_validation_samples"):
     """Download folder from Google Drive using gdown"""
     if not HAS_GDOWN:
@@ -611,15 +635,41 @@ def show_admin_page():
             with col5:
                 st.metric("⭐⭐⭐⭐⭐ Highly App.", ratings[5])
             
-            # Download button for individual user
-            user_json = json.dumps(user_data["annotations"], indent=2)
-            st.download_button(
-                label=f"⬇️ Download {user_name}'s Annotations",
-                data=user_json,
-                file_name=f"annotations_{user_name}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
-                mime="application/json",
-                use_container_width=True
-            )
+            # Download and delete buttons for individual user
+            col_d, col_del = st.columns(2)
+            
+            with col_d:
+                user_json = json.dumps(user_data["annotations"], indent=2)
+                st.download_button(
+                    label=f"⬇️ Download {user_name}'s Annotations",
+                    data=user_json,
+                    file_name=f"annotations_{user_name}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
+                    mime="application/json",
+                    use_container_width=True
+                )
+            
+            with col_del:
+                if st.button(f"🗑️ Delete {user_name}'s Data", use_container_width=True, key=f"delete_user_{user_name}"):
+                    st.session_state[f"confirm_delete_{user_name}"] = True
+            
+            # Confirmation dialog
+            if st.session_state.get(f"confirm_delete_{user_name}", False):
+                st.warning(f"⚠️ Are you sure you want to delete all annotations for {user_name}?")
+                col_conf1, col_conf2 = st.columns(2)
+                
+                with col_conf1:
+                    if st.button(f"✅ YES, Delete {user_name}'s Data", use_container_width=True, key=f"confirm_del_{user_name}"):
+                        if delete_user_annotations(user_name):
+                            st.session_state[f"confirm_delete_{user_name}"] = False
+                            st.success(f"✅ Deleted all annotations for {user_name}")
+                            st.rerun()
+                        else:
+                            st.error(f"❌ Failed to delete {user_name}'s data")
+                
+                with col_conf2:
+                    if st.button(f"❌ Cancel", use_container_width=True, key=f"cancel_del_{user_name}"):
+                        st.session_state[f"confirm_delete_{user_name}"] = False
+                        st.rerun()
     
     st.divider()
     
@@ -631,7 +681,7 @@ def show_admin_page():
         "users": {u: user_data["annotations"] for u, user_data in all_users.items()}
     }, indent=2)
     
-    col1, col2 = st.columns(2)
+    col1, col2, col3 = st.columns(3)
     with col1:
         st.download_button(
             label=f"📥 Download ALL Annotations ({total_users} users)",
@@ -642,10 +692,33 @@ def show_admin_page():
         )
     
     with col2:
+        if st.button("🗑️ Delete ALL Data", use_container_width=True, key="delete_all_data_btn"):
+            st.session_state["confirm_delete_all"] = True
+    
+    with col3:
         if st.button("👤 Logout", use_container_width=True, key="admin_logout"):
             st.session_state.user_name = ""
             st.session_state.app_page = "login"
             st.rerun()
+    
+    # Confirmation dialog for delete all
+    if st.session_state.get("confirm_delete_all", False):
+        st.error("🚨 WARNING: This will DELETE ALL annotations for ALL users! This cannot be undone!")
+        col_conf1, col_conf2 = st.columns(2)
+        
+        with col_conf1:
+            if st.button("✅ YES, DELETE EVERYTHING", use_container_width=True, key="confirm_delete_all_btn"):
+                if delete_all_annotations():
+                    st.session_state["confirm_delete_all"] = False
+                    st.success("✅ All annotations deleted!")
+                    st.rerun()
+                else:
+                    st.error("❌ Failed to delete all annotations")
+        
+        with col_conf2:
+            if st.button("❌ Cancel - Keep Data", use_container_width=True, key="cancel_delete_all"):
+                st.session_state["confirm_delete_all"] = False
+                st.rerun()
 
 def show_summary_page():
     """Show evaluation summary and statistics"""
