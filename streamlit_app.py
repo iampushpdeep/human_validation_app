@@ -87,6 +87,14 @@ if "auto_save_enabled" not in st.session_state:
 # UTILITY FUNCTIONS
 # ============================================================================
 
+def is_cluster_evaluated(annotations, cluster_cid):
+    """Check if a cluster has been genuinely evaluated (not just pre-selected defaults)"""
+    if cluster_cid not in annotations:
+        return False
+    ann = annotations[cluster_cid]
+    # Only count as evaluated if rating is explicitly set to a value
+    return ann.get("appropriateness_rating") is not None
+
 def sanitize_name(name):
     """Convert name to safe filename"""
     return name.lower().replace(" ", "_")
@@ -390,7 +398,7 @@ def show_dashboard_page():
     
     # Progress summary
     col1, col2, col3 = st.columns(3)
-    completed = sum(1 for c in clusters if c.get("cid", f"cluster_{clusters.index(c)}") in annotations)
+    completed = sum(1 for c in clusters if is_cluster_evaluated(annotations, c.get("cid", f"cluster_{clusters.index(c)}")))
     
     with col1:
         st.metric("Total Clusters", len(clusters))
@@ -448,7 +456,7 @@ def show_summary_page():
     st.title("📊 Evaluation Summary")
     st.divider()
     
-    completed = sum(1 for c in clusters if c.get("cid", f"cluster_{clusters.index(c)}") in annotations)
+    completed = sum(1 for c in clusters if is_cluster_evaluated(annotations, c.get("cid", f"cluster_{clusters.index(c)}")))
     st.metric("Completed Evaluations", f"{completed}/{len(clusters)}")
     
     st.divider()
@@ -460,7 +468,7 @@ def show_summary_page():
     
     for c in clusters:
         cid = c.get("cid", f"cluster_{clusters.index(c)}")
-        if cid in annotations:
+        if is_cluster_evaluated(annotations, cid):
             rating = annotations[cid].get("appropriateness_rating")
             if rating:
                 ratings[rating] += 1
@@ -487,7 +495,7 @@ def show_summary_page():
     
     for idx, c in enumerate(clusters):
         cid = c.get("cid", f"cluster_{idx}")
-        if cid in annotations:
+        if is_cluster_evaluated(annotations, cid):
             ann = annotations[cid]
             rating = ann.get("appropriateness_rating", "N/A")
             
@@ -517,7 +525,7 @@ def show_summary_page():
             tasks = []
             for idx, c in enumerate(clusters):
                 cid = c.get("cid", f"cluster_{idx}")
-                if cid in annotations:
+                if is_cluster_evaluated(annotations, cid):
                     a = annotations[cid]
                     tasks.append({
                         "id": idx + 1,
@@ -562,7 +570,7 @@ def show_evaluation_page():
         st.divider()
         
         # Progress
-        completed = sum(1 for c in clusters if c.get("cid", f"cluster_{clusters.index(c)}") in st.session_state.annotations)
+        completed = sum(1 for c in clusters if is_cluster_evaluated(st.session_state.annotations, c.get("cid", f"cluster_{clusters.index(c)}")))
         st.markdown(f"**Progress:** {completed}/{len(clusters)}")
         st.progress(completed / len(clusters))
         
@@ -572,7 +580,7 @@ def show_evaluation_page():
         st.markdown("### Clusters")
         for idx, c in enumerate(clusters):
             cid = c.get("cid", f"cluster_{idx}")
-            is_completed = "✅" if cid in st.session_state.annotations else "⭕"
+            is_completed = "✅" if is_cluster_evaluated(st.session_state.annotations, cid) else "⭕"
             is_current = "→" if st.session_state.current_cluster_idx == idx else " "
             
             if st.button(f"{is_current} [{idx+1}] {is_completed} {c.get('label', 'N/A')[:30]}", 
@@ -667,6 +675,7 @@ def show_evaluation_page():
     # Annotation form with evaluation criteria
     st.markdown("### Your Evaluation")
 
+    # Initialize annotation if doesn't exist
     if cluster_cid not in st.session_state.annotations:
         st.session_state.annotations[cluster_cid] = {
             "appropriateness_rating": None,
@@ -676,6 +685,17 @@ def show_evaluation_page():
         }
 
     ann = st.session_state.annotations[cluster_cid]
+    
+    # Only show previous evaluation if it was actually completed
+    if ann["appropriateness_rating"] is None:
+        # Reset form if not evaluated yet
+        ann = {
+            "appropriateness_rating": None,
+            "follow_up_answers": {},
+            "suggested_name": "",
+            "notes": "",
+        }
+        st.session_state.annotations[cluster_cid] = ann
 
     # ============================================================================
     # STEP 1: Likert Scale - Is the cluster name appropriate?
@@ -693,6 +713,7 @@ def show_evaluation_page():
 
     col1, col2 = st.columns([3, 1])
     with col1:
+        # Don't pre-select a value - slider starts at middle but user must actively choose
         ann["appropriateness_rating"] = st.slider(
             "Rate the appropriateness:",
             min_value=1,
@@ -705,20 +726,23 @@ def show_evaluation_page():
 
     with col2:
         score = ann["appropriateness_rating"]
-        if score == 5:
-            st.markdown(f"<div style='text-align: center; font-size: 24px;'>⭐⭐⭐⭐⭐<br/><span style='font-size: 32px; font-weight: bold;'>{score}</span></div>", unsafe_allow_html=True)
-        elif score == 4:
-            st.markdown(f"<div style='text-align: center; font-size: 24px;'>⭐⭐⭐⭐<br/><span style='font-size: 32px; font-weight: bold;'>{score}</span></div>", unsafe_allow_html=True)
-        elif score == 3:
-            st.markdown(f"<div style='text-align: center; font-size: 24px;'>⭐⭐⭐<br/><span style='font-size: 32px; font-weight: bold;'>{score}</span></div>", unsafe_allow_html=True)
-        elif score == 2:
-            st.markdown(f"<div style='text-align: center; font-size: 24px;'>⭐⭐<br/><span style='font-size: 32px; font-weight: bold;'>{score}</span></div>", unsafe_allow_html=True)
-        else:
-            st.markdown(f"<div style='text-align: center; font-size: 24px;'>⭐<br/><span style='font-size: 32px; font-weight: bold;'>{score}</span></div>", unsafe_allow_html=True)
+        if score is not None:
+            if score == 5:
+                st.markdown(f"<div style='text-align: center; font-size: 24px;'>⭐⭐⭐⭐⭐<br/><span style='font-size: 32px; font-weight: bold;'>{score}</span></div>", unsafe_allow_html=True)
+            elif score == 4:
+                st.markdown(f"<div style='text-align: center; font-size: 24px;'>⭐⭐⭐⭐<br/><span style='font-size: 32px; font-weight: bold;'>{score}</span></div>", unsafe_allow_html=True)
+            elif score == 3:
+                st.markdown(f"<div style='text-align: center; font-size: 24px;'>⭐⭐⭐<br/><span style='font-size: 32px; font-weight: bold;'>{score}</span></div>", unsafe_allow_html=True)
+            elif score == 2:
+                st.markdown(f"<div style='text-align: center; font-size: 24px;'>⭐⭐<br/><span style='font-size: 32px; font-weight: bold;'>{score}</span></div>", unsafe_allow_html=True)
+            elif score == 1:
+                st.markdown(f"<div style='text-align: center; font-size: 24px;'>⭐<br/><span style='font-size: 32px; font-weight: bold;'>{score}</span></div>", unsafe_allow_html=True)
 
     score = ann["appropriateness_rating"]
 
-    st.markdown("""
+    # Only show guide and options if user has selected a rating
+    if score is not None:
+        st.markdown("""
 | Score | Meaning |
 |-------|---------|
 | 5 | ✅ **Highly appropriate** - The name clearly and accurately represents all the content in this cluster. It's specific, unambiguous, and perfectly captures the essence of the posts. |
@@ -728,9 +752,12 @@ def show_evaluation_page():
 | 1 | ❌ **Not appropriate** - The name is misleading, irrelevant, or completely misrepresents the content. It fails to capture what these posts are about. |
 """)
 
-    st.divider()
-    st.markdown(f"**{appropriateness_options[score]}**")
-    st.divider()
+        st.divider()
+        st.markdown(f"**{appropriateness_options[score]}**")
+        st.divider()
+    else:
+        st.info("👆 Please select a rating above to continue")
+        st.stop()
 
     # ============================================================================
     # IF LOW/NEUTRAL SCORE (1-3): Show follow-up questions
@@ -862,8 +889,8 @@ def show_evaluation_page():
                 st.rerun()
 
     st.divider()
-    completed = sum(1 for c in clusters if c.get("cid", f"cluster_{clusters.index(c)}") in st.session_state.annotations)
-    st.progress(completed / len(clusters))
+    completed = sum(1 for c in clusters if is_cluster_evaluated(st.session_state.annotations, c.get("cid", f"cluster_{clusters.index(c)}")))
+    st.progress(completed / len(clusters) if clusters else 0)
     st.caption(f"Progress: {completed}/{len(clusters)} clusters evaluated")
 
 # ============================================================================
