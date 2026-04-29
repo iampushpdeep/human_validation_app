@@ -2,6 +2,8 @@ import streamlit as st
 import json
 import jsonlines
 import numpy as np
+import os
+import shutil
 from pathlib import Path
 from datetime import datetime
 from PIL import Image, ImageFilter
@@ -82,6 +84,8 @@ if "last_saved" not in st.session_state:
     st.session_state.last_saved = session_data.get("last_saved", "Never")
 if "auto_save_enabled" not in st.session_state:
     st.session_state.auto_save_enabled = True
+if "show_confirm_clear" not in st.session_state:
+    st.session_state.show_confirm_clear = False
 
 # ============================================================================
 # UTILITY FUNCTIONS
@@ -447,6 +451,55 @@ def show_dashboard_page():
             st.caption(f"⏱️ Last saved: {st.session_state.last_saved}")
         else:
             st.caption("Not saved yet")
+    
+    st.divider()
+    
+    # Admin/Settings section
+    with st.expander("⚙️ Settings & Data Management"):
+        st.markdown("### Clear Data")
+        st.warning("⚠️ This action cannot be undone!")
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("🗑️ Clear My Annotations", use_container_width=True, key="clear_my_data"):
+                # Clear current user's annotations
+                user_file = get_user_annotation_file(st.session_state.user_name)
+                if user_file.exists():
+                    os.remove(user_file)
+                st.session_state.annotations = {}
+                st.success(f"✅ Cleared all annotations for {st.session_state.user_name}")
+                st.rerun()
+        
+        with col2:
+            if st.button("🗑️ Clear ALL Data", use_container_width=True, key="clear_all_data"):
+                st.session_state.show_confirm_clear = True
+        
+        if st.session_state.get("show_confirm_clear", False):
+            st.error("🚨 Are you sure? This will delete ALL user data!")
+            col1, col2 = st.columns(2)
+            with col1:
+                if st.button("✅ YES, Delete Everything", use_container_width=True, key="confirm_clear"):
+
+                    if SESSION_DIR.exists():
+                        shutil.rmtree(SESSION_DIR)
+                    # Clear all annotation files
+                    anno_dir = Path("human_validation_samples/intolerant")
+                    if anno_dir.exists():
+                        for f in anno_dir.glob("annotations_*.json"):
+                            os.remove(f)
+                        export_file = anno_dir / "annotations_export.json"
+                        if export_file.exists():
+                            os.remove(export_file)
+                    st.session_state.annotations = {}
+                    st.session_state.user_name = ""
+                    st.session_state.show_confirm_clear = False
+                    st.success("✅ All data cleared!")
+                    st.rerun()
+            
+            with col2:
+                if st.button("❌ Cancel", use_container_width=True, key="cancel_clear"):
+                    st.session_state.show_confirm_clear = False
+                    st.rerun()
 
 def show_summary_page():
     """Show evaluation summary and statistics"""
