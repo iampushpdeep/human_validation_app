@@ -135,14 +135,27 @@ def load_user_annotations(user_name):
         return {}
 
 def save_user_annotations(user_name, annotations):
-    """Save user's annotations with timestamp"""
+    """Save user's annotations with timestamp - only completed evaluations"""
     filepath = get_user_annotation_file(user_name)
     filepath.parent.mkdir(parents=True, exist_ok=True)
+    
+    # Filter out incomplete annotations (those without a rating)
+    completed_annotations = {
+        cid: ann for cid, ann in annotations.items()
+        if ann.get("appropriateness_rating") is not None
+    }
+    
+    # Only save if there are completed evaluations
+    if not completed_annotations:
+        # If no completed evaluations, delete the file if it exists
+        if filepath.exists():
+            filepath.unlink()
+        return True
     
     data = {
         "user_name": user_name,
         "timestamp": datetime.now().isoformat(),
-        "annotations": annotations
+        "annotations": completed_annotations
     }
     
     try:
