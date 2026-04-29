@@ -766,37 +766,51 @@ def show_evaluation_page():
 
     st.markdown("**Choose one rating:**")
     
-    # Create 5 columns for radio-like buttons
+    # Create 5 columns for radio-like buttons with visual selection
     col1, col2, col3, col4, col5 = st.columns(5)
     
-    rating_selected = None
+    score = ann["appropriateness_rating"]
     
     with col1:
-        if st.button("⭐\n**1 - Not\nAppropriate**", use_container_width=True, key=f"rate_1_{cluster_cid}"):
+        button_text = "⭐\n**1 - Not\nAppropriate**" if score != 1 else "✅ ⭐\n**1 - Not\nAppropriate**"
+        button_style = "color: white; background-color: #ff4444;" if score == 1 else ""
+        if st.button(button_text, use_container_width=True, key=f"rate_1_{cluster_cid}"):
             ann["appropriateness_rating"] = 1
             st.rerun()
     
     with col2:
-        if st.button("⭐⭐\n**2 - Somewhat\nInappropriate**", use_container_width=True, key=f"rate_2_{cluster_cid}"):
+        button_text = "⭐⭐\n**2 - Somewhat\nInappropriate**" if score != 2 else "✅ ⭐⭐\n**2 - Somewhat\nInappropriate**"
+        if st.button(button_text, use_container_width=True, key=f"rate_2_{cluster_cid}"):
             ann["appropriateness_rating"] = 2
             st.rerun()
     
     with col3:
-        if st.button("⭐⭐⭐\n**3 - Neutral**", use_container_width=True, key=f"rate_3_{cluster_cid}"):
+        button_text = "⭐⭐⭐\n**3 - Neutral**" if score != 3 else "✅ ⭐⭐⭐\n**3 - Neutral**"
+        if st.button(button_text, use_container_width=True, key=f"rate_3_{cluster_cid}"):
             ann["appropriateness_rating"] = 3
             st.rerun()
     
     with col4:
-        if st.button("⭐⭐⭐⭐\n**4 - Somewhat\nAppropriate**", use_container_width=True, key=f"rate_4_{cluster_cid}"):
+        button_text = "⭐⭐⭐⭐\n**4 - Somewhat\nAppropriate**" if score != 4 else "✅ ⭐⭐⭐⭐\n**4 - Somewhat\nAppropriate**"
+        if st.button(button_text, use_container_width=True, key=f"rate_4_{cluster_cid}"):
             ann["appropriateness_rating"] = 4
             st.rerun()
     
     with col5:
-        if st.button("⭐⭐⭐⭐⭐\n**5 - Highly\nAppropriate**", use_container_width=True, key=f"rate_5_{cluster_cid}"):
+        button_text = "⭐⭐⭐⭐⭐\n**5 - Highly\nAppropriate**" if score != 5 else "✅ ⭐⭐⭐⭐⭐\n**5 - Highly\nAppropriate**"
+        if st.button(button_text, use_container_width=True, key=f"rate_5_{cluster_cid}"):
             ann["appropriateness_rating"] = 5
             st.rerun()
 
     score = ann["appropriateness_rating"]
+    
+    # Show clear button only if a rating is selected
+    if score is not None:
+        col_clear, _ = st.columns([1, 4])
+        with col_clear:
+            if st.button("🔄 Clear Choice", use_container_width=True, key=f"clear_rating_{cluster_cid}"):
+                ann["appropriateness_rating"] = None
+                st.rerun()
     
     # Show selected rating with visual feedback
     if score is not None:
