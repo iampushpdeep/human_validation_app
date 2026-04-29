@@ -920,34 +920,38 @@ def show_evaluation_page():
             st.metric("Avg Probability", "N/A")
 
     st.markdown(f"### **Label:** `{cluster_label}`")
-    st.caption(f"Summary: {cluster.get('summary', 'No summary available')}")
+    st.markdown(f"**Summary:** {cluster.get('summary', 'No summary available')}")
 
-    # Display examples
+    # Display examples in 2 columns
     st.markdown(f"#### Examples ({len(cluster.get('examples', []))} samples):")
     examples = cluster.get("examples", [])
     if examples:
+        # Create 2-column layout for examples
+        cols = st.columns(2)
         for i, ex in enumerate(examples, 1):
-            with st.container(border=True):
-                if isinstance(ex, dict):
-                    images = ex.get("images", []) or ([ex.get("image")] if ex.get("image") else [])
-                    videos = ex.get("videos", []) or ([ex.get("video")] if ex.get("video") else [])
+            col_idx = (i - 1) % 2
+            with cols[col_idx]:
+                with st.container(border=True):
+                    if isinstance(ex, dict):
+                        images = ex.get("images", []) or ([ex.get("image")] if ex.get("image") else [])
+                        videos = ex.get("videos", []) or ([ex.get("video")] if ex.get("video") else [])
+                        
+                        # Display media
+                        if images or videos:
+                            display_media(cluster_id, i, images, videos)
+                            st.divider()
                     
-                    # Display media
-                    if images or videos:
-                        display_media(cluster_id, i, images, videos)
-                        st.divider()
-                
-                # Display text
-                text = ex.get("text", str(ex))
-                if text:
-                    st.write(f"**#{i}** {text}")
-                
-                # Display cluster probability
-                if isinstance(ex, dict) and "cluster_probability" in ex:
-                    prob = ex.get("cluster_probability", 0.0)
-                    bar_length = int(prob * 30)
-                    bar = "█" * bar_length + "░" * (30 - bar_length)
-                    st.caption(f"Confidence: {bar} {prob:.4f}")
+                    # Display text
+                    text = ex.get("text", str(ex))
+                    if text:
+                        st.write(f"**#{i}** {text}")
+                    
+                    # Display cluster probability
+                    if isinstance(ex, dict) and "cluster_probability" in ex:
+                        prob = ex.get("cluster_probability", 0.0)
+                        bar_length = int(prob * 30)
+                        bar = "█" * bar_length + "░" * (30 - bar_length)
+                        st.caption(f"Confidence: {bar} {prob:.4f}")
     else:
         st.info("No examples available")
 
@@ -955,6 +959,21 @@ def show_evaluation_page():
 
     # Annotation form with evaluation criteria
     st.markdown("### Your Evaluation")
+    
+    # Show scores reference table
+    st.markdown("#### Rating Scale")
+    scores_data = {
+        "Score": ["5", "4", "3", "2", "1"],
+        "Rating": ["⭐⭐⭐⭐⭐ Highly Appropriate", "⭐⭐⭐⭐ Somewhat Appropriate", "⭐⭐⭐ Neutral", "⭐⭐ Somewhat Inappropriate", "⭐ Not Appropriate"],
+        "Description": [
+            "Name perfectly describes the content - specific and unambiguous",
+            "Name mostly fits with minor issues",
+            "Name is partially accurate with noticeable gaps",
+            "Name has significant issues - many posts don't fit well",
+            "Name is misleading or completely misrepresents content"
+        ]
+    }
+    st.table(scores_data)
 
     # Initialize annotation if doesn't exist
     if cluster_cid not in st.session_state.annotations:
