@@ -374,6 +374,9 @@ def show_login_page():
             if st.button("✅ Continue", use_container_width=True):
                 if user_name and len(user_name.strip()) > 0:
                     st.session_state.user_name = user_name.strip()
+                    # Load this user's annotations from their file
+                    st.session_state.annotations = load_user_annotations(st.session_state.user_name)
+                    st.session_state.current_cluster_idx = 0
                     st.session_state.app_page = "dashboard"
                     save_session_state()
                     st.rerun()
@@ -394,6 +397,11 @@ def show_login_page():
 
 def show_dashboard_page():
     """Show dashboard with progress and options"""
+    # Ensure annotations are loaded for current user
+    if st.session_state.user_name:
+        if not st.session_state.annotations:
+            st.session_state.annotations = load_user_annotations(st.session_state.user_name)
+    
     clusters = st.session_state.clusters
     annotations = st.session_state.annotations
     
