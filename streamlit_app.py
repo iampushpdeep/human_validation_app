@@ -1278,6 +1278,52 @@ if not st.session_state.clusters:
     clusters_data = load_clusters_from_validation_data()
     if clusters_data:
         st.session_state.clusters = clusters_data
+    else:
+        # No clusters found - offer download option
+        st.session_state.show_download_prompt = True
+
+# If clusters are missing, show setup page
+if not st.session_state.clusters and st.session_state.app_page != "login":
+    st.title("🏷️ Cluster Label Validator")
+    st.divider()
+    st.warning("⚠️ No cluster data found!")
+    st.markdown("""
+    The validation data needs to be downloaded from Google Drive first.
+    
+    **Required data missing:**
+    - `human_validation_samples/intolerant/` folder
+    """)
+    
+    col1, col2 = st.columns(2)
+    with col1:
+        st.markdown("**📥 Need to download data?**")
+        google_folder_id = st.text_input(
+            "Enter Google Drive folder ID:",
+            placeholder="e.g., 1ABC2def3GHI4jkl5MNO6pqr7STU8vwx",
+            key="google_folder_input"
+        )
+        
+        if st.button("📥 Download from Google Drive", use_container_width=True):
+            if google_folder_id:
+                if download_from_google_drive(google_folder_id):
+                    st.success("✅ Downloaded! Reloading app...")
+                    st.rerun()
+                else:
+                    st.error("❌ Download failed. Check the folder ID.")
+            else:
+                st.error("Please enter a valid Google Drive folder ID")
+    
+    with col2:
+        st.markdown("**📋 How to find your folder ID:**")
+        st.markdown("""
+        1. Open Google Drive folder
+        2. Look at the URL:
+           `drive.google.com/drive/folders/`**FOLDER_ID**
+        3. Copy the FOLDER_ID part
+        4. Paste it above
+        """)
+    
+    st.stop()
 
 # Title
 st.title("🏷️ Cluster Label Validator")
