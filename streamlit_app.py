@@ -1,0 +1,581 @@
+import streamlit as st
+import json
+import jsonlines
+import numpy as np
+import cv2
+from pathlib import Path
+from datetime import datetime
+from PIL import Image, ImageFilter
+
+# Page config
+st.set_page_config(page_title="Cluster Label Validator", layout="wide")
+st.title("🏷️ Cluster Label Validation")
+
+# Initialize session state
+if "annotations" not in st.session_state:
+    st.session_state.annotations = {}
+if "current_cluster_idx" not in st.session_state:
+    st.session_state.current_cluster_idx = 0
+if "clusters" not in st.session_state:
+    st.session_state.clusters = []
+if "unblurred_images" not in st.session_state:
+    st.session_state.unblurred_images = set()
+if "view_similar" not in st.session_state:
+    st.session_state.view_similar = False
+
+# Load clusters from human validation samples
+@st.cache_data
+def load_clusters_from_validation_data():
+    """Load clusters from human_validation_samples/intolerant directory"""
+    base_path = Path("human_validation_samples/intolerant")
+    
+    if not base_path.exists():
+        return None
+    
+    # Load metadata
+    metadata_path = base_path / "metadata.json"
+    if not metadata_path.exists():
+        return None
+    
+    with open(metadata_path, "r") as f:
+        metadata = json.load(f)
+    
+    clusters_list = []
+    
+    # Load each cluster
+    for cluster_str_id, cluster_info in sorted(metadata.get("clusters", {}).items()):
+        try:
+            cluster_id = int(cluster_str_id)
+            cluster_dir = base_path / f"cluster_{cluster_id}"
+            samples_file = cluster_dir / "samples.jsonl"
+            
+            if not samples_file.exists():
+                continue
+            
+            # Load samples from JSONL
+            examples = []
+            with open(samples_file, "r") as f:
+                for line in f:
+                    if line.strip():
+                        examples.append(json.loads(line))
+            
+            cluster_obj = {
+                "id": cluster_id,
+                "cid": f"cluster_{cluster_id}",
+                "label": cluster_info.get("name", f"Cluster {cluster_id}"),
+                "summary": cluster_info.get("summary", ""),
+                "total_samples": cluster_info.get("num_samples", len(examples)),
+                "total_in_cluster": cluster_info.get("total_in_cluster", 0),
+                "examples": examples,
+                "sample_fraction": cluster_info.get("sample_fraction", 0.0),
+            }
+            
+            clusters_list.append(cluster_obj)
+        except Exception as e:
+            st.warning(f"Error loading cluster {cluster_str_id}: {e}")
+            continue
+    
+    return clusters_list
+
+if not st.session_state.clusters:
+    clusters_data = load_clusters_from_validation_data()
+    if clusters_data:
+        st.session_state.clusters = clusters_data
+    else:
+        st.error("❌ No clusters found. Check human_validation_samples/intolerant/")
+        st.stop()
+
+clusters = st.session_state.clusters
+if not clusters:
+    st.error("❌ No clusters found. Check human_validation_samples/intolerant/")
+    st.stop()
+
+# Helper function to get alternative label suggestions
+def get_label_alternatives(label):
+    """Generate alternative phrasings of the label"""
+    base = label.lower()
+    alternatives = [
+        label,  # original
+        label.replace("and", "&"),
+        label.replace(" ", "-").lower(),
+    ]
+    # Simplified/expanded versions
+    if "crypto" in base or "cryptocurrency" in base:
+        alternatives.append("Digital Currency Investment Schemes")
+    if "misinformation" in base:
+        alternatives.extend(["Disinformation", "False Claims", "Misleading Content"])
+    if "conflict" in base or "war" in base:
+        alternatives.append("Violent Conflict Documentation")
+    if "exploitation" in base:
+        alternatives.extend(["Abuse Content", "Harmful Schemes"])
+    return list(set(alternatives))[:4]
+
+# Video frame extraction helper
+def get_blurred_video_frame(video_path: Path, blur_radius: int = 20):
+    """Extract first frame from video and blur it"""
+    try:
+        cap = cv2.VideoCapture(str(video_path))
+        ret, frame = cap.read()
+        cap.release()
+        
+        if not ret:
+            return None
+        
+        # Convert BGR to RGB
+        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        
+        # Convert to PIL Image
+        img = Image.fromarray(frame)
+        
+        # Blur it
+        blurred_img = img.filter(ImageFilter.GaussianBlur(radius=blur_radius))
+        
+        return blurred_img
+    except Exception as e:
+        st.warning(f"Could not extract video frame: {e}")
+        return None
+
+# Display media helper
+def display_media(cluster_id, example_num, images, videos):
+    """Display images and videos with blur/reveal toggles"""
+    # Create narrower container for media
+    col_left, col_media, col_right = st.columns([1, 2, 1])
+    
+    with col_media:
+        if images:
+            cols = st.columns(min(len(images), 2))
+            for img_idx, img_item in enumerate(images):
+                # Handle both string paths and dict with 'file' key
+                if isinstance(img_item, dict):
+                    img_path = img_item.get("file", "")
+                else:
+                    img_path = img_item
+                
+                image_key = f"{cluster_id}_{example_num}_img_{img_idx}"
+                image_path = Path(f"human_validation_samples/intolerant/cluster_{cluster_id}") / img_path
+                
+                with cols[img_idx % len(cols)]:
+                    if image_path.exists():
+                        try:
+                            img = Image.open(image_path)
+                            if image_key in st.session_state.unblurred_images:
+                                st.image(img, use_container_width=True)
+                                if st.button("🔒 Blur", key=f"blur_{image_key}", use_container_width=True):
+                                    st.session_state.unblurred_images.discard(image_key)
+                                    st.rerun()
+                            else:
+                                blurred_img = img.filter(ImageFilter.GaussianBlur(radius=20))
+                                st.image(blurred_img, use_container_width=True)
+                                if st.button("👁️ Reveal", key=f"unblur_{image_key}", use_container_width=True):
+                                    st.session_state.unblurred_images.add(image_key)
+                                    st.rerun()
+                        except Exception as e:
+                            st.warning(f"Could not load image: {e}")
+                    else:
+                        st.caption(f"Image not found: {image_path}")
+        
+        if videos:
+            if len(videos) == 1:
+                st.markdown("**Video:**")
+                if isinstance(videos[0], dict):
+                    video_path_str = videos[0].get("file", videos[0].get("video", ""))
+                else:
+                    video_path_str = videos[0]
+                
+                video_path = Path(f"human_validation_samples/intolerant/cluster_{cluster_id}") / video_path_str
+                video_key = f"{cluster_id}_{example_num}_vid_0"
+                
+                if video_path.exists():
+                    try:
+                        with open(video_path, 'rb') as f:
+                            video_bytes = f.read()
+                            if video_key in st.session_state.unblurred_images:
+                                st.video(video_bytes)
+                                if st.button("🔒 Blur", key=f"blur_vid_{video_key}", use_container_width=True):
+                                    st.session_state.unblurred_images.discard(video_key)
+                                    st.rerun()
+                            else:
+                                blurred_frame = get_blurred_video_frame(video_path)
+                                if blurred_frame:
+                                    st.image(blurred_frame, use_container_width=True)
+                                else:
+                                    st.info("🎬 Video (Blurred)")
+                                if st.button("👁️ Reveal Video", key=f"reveal_vid_{video_key}", use_container_width=True):
+                                    st.session_state.unblurred_images.add(video_key)
+                                    st.rerun()
+                    except Exception as e:
+                        st.warning(f"Could not load video: {e}")
+                else:
+                    st.caption(f"Video not found: {video_path}")
+            else:
+                st.markdown(f"**Videos ({len(videos)}):**")
+                cols = st.columns(min(len(videos), 2))
+                for vid_idx, vid_item in enumerate(videos):
+                    if isinstance(vid_item, dict):
+                        video_path_str = vid_item.get("file", vid_item.get("video", ""))
+                    else:
+                        video_path_str = vid_item
+                    
+                    video_path = Path(f"human_validation_samples/intolerant/cluster_{cluster_id}") / video_path_str
+                    video_key = f"{cluster_id}_{example_num}_vid_{vid_idx}"
+                    
+                    with cols[vid_idx % len(cols)]:
+                        if video_path.exists():
+                            try:
+                                with open(video_path, 'rb') as f:
+                                    video_bytes = f.read()
+                                    if video_key in st.session_state.unblurred_images:
+                                        st.video(video_bytes)
+                                        if st.button("🔒", key=f"blur_vid_{video_key}", use_container_width=True):
+                                            st.session_state.unblurred_images.discard(video_key)
+                                            st.rerun()
+                                    else:
+                                        blurred_frame = get_blurred_video_frame(video_path)
+                                        if blurred_frame:
+                                            st.image(blurred_frame, use_container_width=True)
+                                        else:
+                                            st.info("🎬 Blurred")
+                                        if st.button("👁️", key=f"reveal_vid_{video_key}", use_container_width=True):
+                                            st.session_state.unblurred_images.add(video_key)
+                                            st.rerun()
+                            except Exception as e:
+                                st.warning(f"Error: {e}")
+                        else:
+                            st.caption(f"Not found")
+
+
+# Navigation
+col1, col2, col3 = st.columns([1, 2, 1])
+with col1:
+    if st.button("⬅️ Previous", use_container_width=True):
+        if st.session_state.current_cluster_idx > 0:
+            st.session_state.current_cluster_idx -= 1
+            st.rerun()
+
+with col2:
+    cluster_num = st.session_state.current_cluster_idx + 1
+    st.markdown(f"<h3 style='text-align: center;'>Cluster {cluster_num} / {len(clusters)}</h3>", unsafe_allow_html=True)
+
+with col3:
+    if st.button("Next ➡️", use_container_width=True):
+        if st.session_state.current_cluster_idx < len(clusters) - 1:
+            st.session_state.current_cluster_idx += 1
+            st.rerun()
+
+# Current cluster
+cluster = clusters[st.session_state.current_cluster_idx]
+cluster_id = cluster.get("id", st.session_state.current_cluster_idx)  # Use numeric ID for paths
+cluster_cid = cluster.get("cid", f"cluster_{cluster_id}")  # Keep cid for annotations
+cluster_label = cluster.get("label", "N/A")
+
+st.divider()
+
+# Show similar cluster for comparison
+if len(clusters) > 1:
+    col1, col2 = st.columns([3, 1])
+    with col2:
+        show_similar = st.checkbox("📊 Show Similar Cluster", value=st.session_state.view_similar, key="similar_toggle")
+        st.session_state.view_similar = show_similar
+    
+    if show_similar and len(clusters) > 1:
+        similar_idx = (st.session_state.current_cluster_idx + 1) % len(clusters)
+        similar_cluster = clusters[similar_idx]
+        
+        with st.expander("🔄 Similar Cluster Comparison", expanded=True):
+            col1, col2 = st.columns(2)
+            with col1:
+                st.markdown("### Current")
+                st.write(f"**Label:** {cluster_label}")
+                st.caption(f"Samples: {cluster.get('total_samples', '?')}")
+            with col2:
+                st.markdown("### Similar")
+                st.write(f"**Label:** {similar_cluster.get('label', 'N/A')}")
+                st.caption(f"Samples: {similar_cluster.get('total_samples', '?')}")
+
+# Display cluster metrics
+col1, col2, col3 = st.columns(3)
+with col1:
+    st.metric("Cluster ID", cluster_id)
+with col2:
+    st.metric("Total Samples", cluster.get("total_samples", len(cluster.get("examples", []))))
+with col3:
+    if cluster.get("examples"):
+        avg_prob = np.mean([ex.get("cluster_probability", 0.85) for ex in cluster.get("examples", [])])
+        st.metric("Avg Probability", f"{float(avg_prob):.2f}")
+    else:
+        st.metric("Avg Probability", "N/A")
+
+st.markdown(f"### **Label:** `{cluster_label}`")
+st.caption(f"Summary: {cluster.get('summary', 'No summary available')}")
+
+# Display examples
+st.markdown(f"#### Examples ({len(cluster.get('examples', []))} samples):")
+examples = cluster.get("examples", [])
+if examples:
+    for i, ex in enumerate(examples, 1):
+        with st.container(border=True):
+            if isinstance(ex, dict):
+                images = ex.get("images", []) or ([ex.get("image")] if ex.get("image") else [])
+                videos = ex.get("videos", []) or ([ex.get("video")] if ex.get("video") else [])
+                
+                # Display media
+                if images or videos:
+                    display_media(cluster_id, i, images, videos)
+                    st.divider()
+            
+            # Display text
+            text = ex.get("text", str(ex))
+            if text:
+                st.write(f"**#{i}** {text}")
+            
+            # Display cluster probability
+            if isinstance(ex, dict) and "cluster_probability" in ex:
+                prob = ex.get("cluster_probability", 0.0)
+                # Visual probability bar
+                bar_length = int(prob * 30)
+                bar = "█" * bar_length + "░" * (30 - bar_length)
+                st.caption(f"Confidence: {bar} {prob:.4f}")
+else:
+    st.info("No examples available")
+
+st.divider()
+
+# Annotation form with mode selection
+st.markdown("### Your Evaluation")
+
+# Initialize annotation dict
+if cluster_cid not in st.session_state.annotations:
+    st.session_state.annotations[cluster_cid] = {
+        "appropriateness_rating": None,
+        "follow_up_answers": {},
+        "suggested_name": "",
+        "notes": "",
+    }
+
+ann = st.session_state.annotations[cluster_cid]
+
+# ============================================================================
+# STEP 1: Likert Scale - Is the cluster name appropriate?
+# ============================================================================
+st.markdown("### Step 1: Cluster Name Appropriateness")
+st.info("🎯 Is the cluster name appropriate for these social media posts?")
+
+appropriateness_options = {
+    5: "✅ Highly appropriate - Name perfectly describes the content",
+    4: "👍 Somewhat appropriate - Name mostly fits with minor issues",
+    3: "🤷 Neutral - Name is partially accurate",
+    2: "👎 Somewhat inappropriate - Significant issues with the name",
+    1: "❌ Not appropriate - Name is misleading or irrelevant"
+}
+
+# Use slider for rating with visual feedback
+col1, col2 = st.columns([3, 1])
+with col1:
+    ann["appropriateness_rating"] = st.slider(
+        "Rate the appropriateness:",
+        min_value=1,
+        max_value=5,
+        value=ann["appropriateness_rating"] if ann["appropriateness_rating"] else 3,
+        step=1,
+        key=f"appropriateness_{cluster_cid}",
+        label_visibility="collapsed"
+    )
+
+with col2:
+    # Display score with visual representation
+    score = ann["appropriateness_rating"]
+    if score == 5:
+        st.markdown(f"<div style='text-align: center; font-size: 24px;'>⭐⭐⭐⭐⭐<br/><span style='font-size: 32px; font-weight: bold;'>{score}</span></div>", unsafe_allow_html=True)
+    elif score == 4:
+        st.markdown(f"<div style='text-align: center; font-size: 24px;'>⭐⭐⭐⭐<br/><span style='font-size: 32px; font-weight: bold;'>{score}</span></div>", unsafe_allow_html=True)
+    elif score == 3:
+        st.markdown(f"<div style='text-align: center; font-size: 24px;'>⭐⭐⭐<br/><span style='font-size: 32px; font-weight: bold;'>{score}</span></div>", unsafe_allow_html=True)
+    elif score == 2:
+        st.markdown(f"<div style='text-align: center; font-size: 24px;'>⭐⭐<br/><span style='font-size: 32px; font-weight: bold;'>{score}</span></div>", unsafe_allow_html=True)
+    else:
+        st.markdown(f"<div style='text-align: center; font-size: 24px;'>⭐<br/><span style='font-size: 32px; font-weight: bold;'>{score}</span></div>", unsafe_allow_html=True)
+
+# Show annotation for current score
+score = ann["appropriateness_rating"]
+
+# Show visual scale guide
+st.markdown("""
+| Score | Meaning |
+|-------|---------|
+| 5 | ✅ **Highly appropriate** - The name clearly and accurately represents all the content in this cluster. It's specific, unambiguous, and perfectly captures the essence of the posts. |
+| 4 | 👍 **Somewhat appropriate** - The name is mostly accurate and describes the general theme well, though there might be minor issues or slight room for improvement. |
+| 3 | 🤷 **Neutral** - The name is partially accurate but has noticeable gaps or ambiguities. Some posts fit well, others don't. Improvements would be beneficial. |
+| 2 | 👎 **Somewhat inappropriate** - The name has significant issues. Many posts don't fit well, or the name is confusing/misleading in important ways. |
+| 1 | ❌ **Not appropriate** - The name is misleading, irrelevant, or completely misrepresents the content. It fails to capture what these posts are about. |
+""")
+
+st.divider()
+
+# Show description of the selected rating
+st.markdown(f"**{appropriateness_options[score]}**")
+
+st.divider()
+
+# ============================================================================
+# IF LOW/NEUTRAL SCORE (1-3): Show follow-up questions
+# ============================================================================
+if ann["appropriateness_rating"] in [1, 2, 3]:
+    st.markdown("### Step 2: Help Us Improve")
+    st.warning("📝 Please answer these questions to help us refine the label")
+    
+    st.markdown("---")
+    
+    # Follow-up Q1: Main issue
+    st.markdown("#### 1️⃣ What is the main issue with this name?")
+    ann["follow_up_answers"]["main_issue"] = st.radio(
+        "Select the primary concern:",
+        options=[
+            "too_broad",
+            "too_narrow",
+            "misleading",
+            "unclear",
+            "other"
+        ],
+        format_func=lambda x: {
+            "too_broad": "📊 Too broad - covers too many different types of content",
+            "too_narrow": "🔍 Too narrow - too specific for some examples",
+            "misleading": "⚠️ Misleading - doesn't accurately reflect the content",
+            "unclear": "❓ Unclear - confusing or ambiguous phrasing",
+            "other": "🤔 Other reason"
+        }[x],
+        horizontal=False,
+        key=f"main_issue_{cluster_cid}",
+        label_visibility="collapsed"
+    )
+    
+    st.markdown("---")
+    
+    # Follow-up Q2: Only show if "other" is selected
+    if ann["follow_up_answers"]["main_issue"] == "other":
+        st.markdown("#### 2️⃣ What's the specific issue with this name?")
+        ann["follow_up_answers"]["missing_element"] = st.text_area(
+            "Please describe the issue:",
+            value=ann["follow_up_answers"].get("missing_element", ""),
+            placeholder="E.g., 'Should mention cryptocurrency scams' or 'Too vague about the specific activity'...",
+            height=80,
+            key=f"missing_{cluster_cid}",
+            label_visibility="collapsed"
+        )
+        
+        st.markdown("---")
+    
+    # Suggest a better name
+    st.markdown("#### 💡 Suggest a Better Name")
+    st.caption("Enter your suggested name (max 90 characters)")
+    
+    suggested_text = st.text_input(
+        "Better name for this cluster:",
+        value=ann["suggested_name"],
+        placeholder="Type a more appropriate name for this cluster...",
+        max_chars=90,
+        key=f"suggested_name_{cluster_cid}",
+        label_visibility="collapsed"
+    )
+    
+    # Show character count
+    char_count = len(suggested_text)
+    if char_count > 0:
+        st.caption(f"Characters: {char_count}/90")
+    
+    ann["suggested_name"] = suggested_text
+
+# ============================================================================
+# IF HIGH SCORE (4-5): Show confirmation or light follow-up
+# ============================================================================
+elif ann["appropriateness_rating"] in [4, 5]:
+    if ann["appropriateness_rating"] == 5:
+        st.markdown("### ✅ Excellent!")
+        st.success(f"Great! The name **'{cluster_label}'** is well-suited for this cluster.")
+    else:
+        st.markdown("### Step 2: Optional Refinement")
+        st.markdown("Would you like to suggest a slightly better name?")
+        
+        st.caption("Enter your suggestion (optional, max 90 characters)")
+        suggested_text = st.text_input(
+            "Alternative name (optional):",
+            value=ann["suggested_name"],
+            placeholder="Leave empty if you're satisfied with the current name...",
+            max_chars=90,
+            key=f"suggested_name_{cluster_cid}",
+            label_visibility="collapsed"
+        )
+        
+        if suggested_text:
+            char_count = len(suggested_text)
+            st.caption(f"Characters: {char_count}/90")
+        
+        ann["suggested_name"] = suggested_text
+    
+    st.divider()
+    
+    # Optional notes for high scores
+    st.markdown("#### 📝 Additional observations (optional)")
+    ann["notes"] = st.text_area(
+        "Notes:",
+        value=ann["notes"],
+        placeholder="Any other feedback or observations?",
+        height=80,
+        key=f"notes_{cluster_cid}",
+        label_visibility="collapsed"
+    )
+
+st.divider()
+
+# Save/Export
+col1, col2, col3 = st.columns(3)
+
+with col1:
+    if st.button("💾 Save Progress", use_container_width=True):
+        output_path = Path("human_validation_samples/intolerant/annotations_export.json")
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        tasks = []
+        for idx, c in enumerate(clusters):
+            cid = c.get("cid", f"cluster_{idx}")
+            if cid in st.session_state.annotations:
+                a = st.session_state.annotations[cid]
+                tasks.append({
+                    "id": idx + 1,
+                    "cluster_id": cid,
+                    "cluster_name": c.get("label", f"Cluster {idx}"),
+                    "annotation": a,
+                    "timestamp": datetime.now().isoformat(),
+                })
+        
+        with open(output_path, "w") as f:
+            json.dump(tasks, f, indent=2)
+        st.success(f"✅ Saved {len(tasks)} annotations to {output_path}")
+
+with col2:
+    if st.button("📊 Summary Report", use_container_width=True):
+        st.markdown("### Evaluation Summary")
+        completed = sum(1 for c in clusters if c.get("cid", f"cluster_{clusters.index(c)}") in st.session_state.annotations)
+        st.metric("Completed", f"{completed}/{len(clusters)}")
+        
+        if completed > 0:
+            keeps = sum(1 for a in st.session_state.annotations.values() 
+                       if a.get("recommendation") == "keep")
+            refines = sum(1 for a in st.session_state.annotations.values() 
+                         if a.get("recommendation") == "refine")
+            splits = sum(1 for a in st.session_state.annotations.values() 
+                        if a.get("recommendation") == "split")
+            
+            col1, col2, col3 = st.columns(3)
+            col1.metric("Keep", keeps)
+            col2.metric("Refine", refines)
+            col3.metric("Split", splits)
+
+with col3:
+    if st.button("🔄 Reset All", use_container_width=True):
+        st.session_state.annotations = {}
+        st.rerun()
+
+# Progress indicator
+st.divider()
+completed = sum(1 for c in clusters if c.get("cid", f"cluster_{clusters.index(c)}") in st.session_state.annotations)
+st.progress(completed / len(clusters))
+st.caption(f"Progress: {completed}/{len(clusters)} clusters evaluated")
