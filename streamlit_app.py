@@ -446,9 +446,15 @@ def show_dashboard_page():
     
     with col3:
         if st.button("👤 Logout", use_container_width=True, key="logout_btn"):
+            # Clear session data for next user
             st.session_state.user_name = ""
+            st.session_state.annotations = {}
+            st.session_state.current_cluster_idx = 0
             st.session_state.app_page = "login"
-            save_session_state()
+            # Clear the session file
+            session_file = get_session_file()
+            if session_file.exists():
+                session_file.unlink()
             st.rerun()
     
     st.divider()
