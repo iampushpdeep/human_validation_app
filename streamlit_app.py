@@ -86,6 +86,10 @@ if "auto_save_enabled" not in st.session_state:
     st.session_state.auto_save_enabled = True
 if "show_confirm_clear" not in st.session_state:
     st.session_state.show_confirm_clear = False
+if "export_data" not in st.session_state:
+    st.session_state.export_data = None
+if "export_count" not in st.session_state:
+    st.session_state.export_count = 0
 
 # ============================================================================
 # UTILITY FUNCTIONS
@@ -590,7 +594,33 @@ def show_summary_page():
             
             with open(output_path, "w") as f:
                 json.dump(tasks, f, indent=2)
+            st.session_state.export_data = json.dumps(tasks, indent=2)
+            st.session_state.export_count = len(tasks)
             st.success(f"✅ Exported {len(tasks)} annotations")
+    
+    # Download buttons for exported results
+    col_d1, col_d2 = st.columns(2)
+    with col_d1:
+        if "export_data" in st.session_state and st.session_state.export_data:
+            st.download_button(
+                label=f"⬇️ Download Export ({st.session_state.export_count} items)",
+                data=st.session_state.export_data,
+                file_name=f"annotations_export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
+                mime="application/json",
+                use_container_width=True
+            )
+    
+    # Download personal annotations
+    with col_d2:
+        if st.session_state.user_name and st.session_state.annotations:
+            personal_json = json.dumps(st.session_state.annotations, indent=2)
+            st.download_button(
+                label=f"⬇️ Download My Annotations",
+                data=personal_json,
+                file_name=f"annotations_{st.session_state.user_name}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
+                mime="application/json",
+                use_container_width=True
+            )
 
 def show_evaluation_page():
     """Show cluster evaluation page"""
