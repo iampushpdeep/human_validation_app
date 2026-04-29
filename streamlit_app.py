@@ -153,6 +153,35 @@ def save_user_annotations(user_name, annotations):
     except Exception as e:
         return False
 
+def get_all_users_annotations():
+    """Load all user annotations from files (for admin)"""
+    base_path = Path("human_validation_samples/intolerant")
+    all_users_data = {}
+    
+    if not base_path.exists():
+        return all_users_data
+    
+    # Find all annotation files
+    for filepath in base_path.glob("annotations_*.json"):
+        try:
+            with open(filepath, "r") as f:
+                data = json.load(f)
+            
+            if isinstance(data, dict):
+                user_name = data.get("user_name", filepath.stem.replace("annotations_", ""))
+                timestamp = data.get("timestamp", "Unknown")
+                annotations = data.get("annotations", {})
+                
+                all_users_data[user_name] = {
+                    "annotations": annotations,
+                    "timestamp": timestamp,
+                    "count": len(annotations)
+                }
+        except:
+            pass
+    
+    return all_users_data
+
 def download_from_google_drive(folder_id, save_path="human_validation_samples"):
     """Download folder from Google Drive using gdown"""
     if not HAS_GDOWN:
@@ -377,10 +406,16 @@ def show_login_page():
             if st.button("✅ Continue", use_container_width=True):
                 if user_name and len(user_name.strip()) > 0:
                     st.session_state.user_name = user_name.strip()
-                    # Load this user's annotations from their file
-                    st.session_state.annotations = load_user_annotations(st.session_state.user_name)
-                    st.session_state.current_cluster_idx = 0
-                    st.session_state.app_page = "dashboard"
+                    
+                    # Check if this is admin user
+                    if st.session_state.user_name.lower() == "admin":
+                        st.session_state.app_page = "admin"
+                    else:
+                        # Load this user's annotations from their file
+                        st.session_state.annotations = load_user_annotations(st.session_state.user_name)
+                        st.session_state.current_cluster_idx = 0
+                        st.session_state.app_page = "dashboard"
+                    
                     save_session_state()
                     st.rerun()
                 else:
@@ -521,6 +556,96 @@ def show_dashboard_page():
                 if st.button("❌ Cancel", use_container_width=True, key="cancel_clear"):
                     st.session_state.show_confirm_clear = False
                     st.rerun()
+
+def show_admin_page():
+    """Show admin panel with all users' annotations"""
+    st.title("👨‍💼 Admin Panel")
+    st.markdown(f"**Logged in as:** admin | [Logout](javascript:void(0))")
+    st.divider()
+    
+    # Get all users' data
+    all_users = get_all_users_annotations()
+    
+    if not all_users:
+        st.info("No annotations found yet")
+        return
+    
+    # Summary statistics
+    col1, col2, col3 = st.columns(3)
+    total_users = len(all_users)
+    total_annotations = sum(u["count"] for u in all_users.values())
+    
+    with col1:
+        st.metric("Total Users", total_users)
+    with col2:
+        st.metric("Total Annotations", total_annotations)
+    with col3:
+        avg_per_user = total_annotations / total_users if total_users > 0 else 0
+        st.metric("Avg per User", f"{avg_per_user:.1f}")
+    
+    st.divider()
+    
+    # Detailed user breakdown
+    st.markdown("### User Breakdown")
+    for user_name, user_data in sorted(all_users.items()):
+        with st.expander(f"👤 {user_name} - {user_data['count']} annotations"):
+            st.caption(f"Last updated: {user_data['timestamp']}")
+            
+            # Show annotations count by rating
+            annotations = user_data["annotations"]
+            ratings = {1: 0, 2: 0, 3: 0, 4: 0, 5: 0}
+            for ann in annotations.values():
+                rating = ann.get("appropriateness_rating")
+                if rating in ratings:
+                    ratings[rating] += 1
+            
+            col1, col2, col3, col4, col5 = st.columns(5)
+            with col1:
+                st.metric("⭐ Not Appropriate", ratings[1])
+            with col2:
+                st.metric("⭐⭐ Somewhat Inapp.", ratings[2])
+            with col3:
+                st.metric("⭐⭐⭐ Neutral", ratings[3])
+            with col4:
+                st.metric("⭐⭐⭐⭐ Somewhat App.", ratings[4])
+            with col5:
+                st.metric("⭐⭐⭐⭐⭐ Highly App.", ratings[5])
+            
+            # Download button for individual user
+            user_json = json.dumps(user_data["annotations"], indent=2)
+            st.download_button(
+                label=f"⬇️ Download {user_name}'s Annotations",
+                data=user_json,
+                file_name=f"annotations_{user_name}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
+                mime="application/json",
+                use_container_width=True
+            )
+    
+    st.divider()
+    
+    # Download all data at once
+    all_data_json = json.dumps({
+        "exported_at": datetime.now().isoformat(),
+        "total_users": total_users,
+        "total_annotations": total_annotations,
+        "users": {u: user_data["annotations"] for u, user_data in all_users.items()}
+    }, indent=2)
+    
+    col1, col2 = st.columns(2)
+    with col1:
+        st.download_button(
+            label=f"📥 Download ALL Annotations ({total_users} users)",
+            data=all_data_json,
+            file_name=f"all_annotations_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
+            mime="application/json",
+            use_container_width=True
+        )
+    
+    with col2:
+        if st.button("👤 Logout", use_container_width=True, key="admin_logout"):
+            st.session_state.user_name = ""
+            st.session_state.app_page = "login"
+            st.rerun()
 
 def show_summary_page():
     """Show evaluation summary and statistics"""
@@ -1068,6 +1193,8 @@ st.title("🏷️ Cluster Label Validator")
 # Page routing
 if st.session_state.app_page == "login":
     show_login_page()
+elif st.session_state.app_page == "admin":
+    show_admin_page()
 elif st.session_state.app_page == "dashboard":
     show_dashboard_page()
 elif st.session_state.app_page == "evaluation":
