@@ -2,12 +2,17 @@ import streamlit as st
 import json
 import jsonlines
 import numpy as np
-import cv2
 from pathlib import Path
 from datetime import datetime
 from PIL import Image, ImageFilter
 
 # Optional imports
+try:
+    import cv2
+    HAS_CV2 = True
+except ImportError:
+    HAS_CV2 = False
+
 try:
     import gdown
     HAS_GDOWN = True
@@ -188,6 +193,9 @@ def load_clusters_from_validation_data():
 
 def get_blurred_video_frame(video_path: Path, blur_radius: int = 20):
     """Extract first frame from video and blur it"""
+    if not HAS_CV2:
+        return None
+    
     try:
         cap = cv2.VideoCapture(str(video_path))
         ret, frame = cap.read()
