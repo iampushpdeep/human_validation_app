@@ -809,88 +809,16 @@ def show_summary_page():
             st.rerun()
     
     with col2:
-        if st.button("💾 Export Results", use_container_width=True):
-            output_path = Path("human_validation_samples/intolerant/annotations_export.json")
-            output_path.parent.mkdir(parents=True, exist_ok=True)
-            tasks = []
-            for idx, c in enumerate(clusters):
-                cid = c.get("cid", f"cluster_{idx}")
-                if is_cluster_evaluated(annotations, cid):
-                    a = annotations[cid]
-                    tasks.append({
-                        "id": idx + 1,
-                        "cluster_id": cid,
-                        "cluster_name": c.get("label", f"Cluster {idx}"),
-                        "annotation": a,
-                        "timestamp": datetime.now().isoformat(),
-                    })
-            
-            with open(output_path, "w") as f:
-                json.dump(tasks, f, indent=2)
-            st.session_state.export_data = json.dumps(tasks, indent=2)
-            st.session_state.export_count = len(tasks)
-            st.success(f"✅ Exported {len(tasks)} annotations")
-    
-    # Download buttons for exported results
-    col_d1, col_d2 = st.columns(2)
-    with col_d1:
-        if "export_data" in st.session_state and st.session_state.export_data:
-            st.download_button(
-                label=f"⬇️ Download Export ({st.session_state.export_count} items)",
-                data=st.session_state.export_data,
-                file_name=f"annotations_export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
-                mime="application/json",
-                use_container_width=True
-            )
-    
-    # Download personal annotations
-    with col_d2:
+        # For non-admin users, just show download button
         if st.session_state.user_name and st.session_state.annotations:
             personal_json = json.dumps(st.session_state.annotations, indent=2)
             st.download_button(
-                label=f"⬇️ Download My Annotations",
+                label="⬇️ Download My Annotations",
                 data=personal_json,
                 file_name=f"annotations_{st.session_state.user_name}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
                 mime="application/json",
                 use_container_width=True
             )
-    
-    # Option to export ALL work from file (includes past sessions)
-    if st.session_state.user_name:
-        st.markdown("---")
-        st.markdown("**📥 Export All Your Work**")
-        col_all1, col_all2 = st.columns(2)
-        
-        with col_all1:
-            if st.button("📋 Load All Past Work", use_container_width=True, help="Load annotations from all previous sessions"):
-                all_annotations = load_user_annotations(st.session_state.user_name)
-                if all_annotations:
-                    st.session_state.annotations = all_annotations
-                    st.success(f"✅ Loaded {len(all_annotations)} total annotations from all sessions")
-                    st.rerun()
-                else:
-                    st.info("No annotations found in your file yet")
-        
-        with col_all2:
-            # Direct download from file if it exists
-            user_file = get_user_annotation_file(st.session_state.user_name)
-            if user_file.exists():
-                with open(user_file, "r") as f:
-                    file_data = json.load(f)
-                    if isinstance(file_data, dict) and "annotations" in file_data:
-                        all_work = file_data["annotations"]
-                    else:
-                        all_work = file_data
-                    
-                    if all_work:
-                        all_work_json = json.dumps(all_work, indent=2)
-                        st.download_button(
-                            label=f"⬇️ Download All Work ({len(all_work)} items)",
-                            data=all_work_json,
-                            file_name=f"annotations_{st.session_state.user_name}_all_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
-                            mime="application/json",
-                            use_container_width=True
-                        )
 
 def show_evaluation_page():
     """Show cluster evaluation page"""
