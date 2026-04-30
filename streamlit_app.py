@@ -936,28 +936,6 @@ def show_evaluation_page():
     cluster_label = cluster.get("cluster_name", "N/A")
     label_category = cluster.get("label_category", "N/A")
     
-    # Header with navigation
-    col1, col2, col3 = st.columns([1, 2, 1])
-    with col1:
-        if st.button("⬅️ Previous", use_container_width=True):
-            if st.session_state.current_cluster_idx > 0:
-                st.session_state.current_cluster_idx -= 1
-                save_session_state()
-                st.rerun()
-
-    with col2:
-        cluster_num = st.session_state.current_cluster_idx + 1
-        st.markdown(f"<h3 style='text-align: center;'>Cluster {cluster_num} / {len(clusters)}</h3>", unsafe_allow_html=True)
-
-    with col3:
-        if st.button("Next ➡️", use_container_width=True):
-            if st.session_state.current_cluster_idx < len(clusters) - 1:
-                st.session_state.current_cluster_idx += 1
-                save_session_state()
-                st.rerun()
-
-    st.divider()
-
     # Show cluster info prominently at top
     st.markdown(f"<h2 style='text-align: center;'>Label Category: <span style='color: #1f77b4;'>{label_category}</span> | Cluster Name: <span style='color: #ff7f0e;'>{cluster_label}</span></h2>", unsafe_allow_html=True)
 
@@ -1239,21 +1217,24 @@ def show_evaluation_page():
     
     st.divider()
     
-    # Cluster navigation at bottom
-    st.markdown("### 🗂️ Navigate Clusters")
-    nav_cols = st.columns(5)
+    # Navigation buttons at bottom
+    col1, col2, col3 = st.columns([1, 2, 1])
     
-    for idx, c in enumerate(clusters):
-        col_idx = idx % 5
-        cid = c.get("cid", f"cluster_{idx}")
-        is_completed = "✅" if is_cluster_evaluated(st.session_state.annotations, cid) else "⭕"
-        is_current = "→ " if st.session_state.current_cluster_idx == idx else ""
-        cluster_short_name = c.get('cluster_name', 'N/A')[:15]
-        
-        with nav_cols[col_idx]:
-            if st.button(f"{is_current}[{idx+1}] {is_completed}\n{cluster_short_name}", 
-                        use_container_width=True, key=f"nav_cluster_bottom_{idx}"):
-                st.session_state.current_cluster_idx = idx
+    with col1:
+        if st.button("⬅️ Previous", use_container_width=True, key="nav_prev_bottom"):
+            if st.session_state.current_cluster_idx > 0:
+                st.session_state.current_cluster_idx -= 1
+                save_session_state()
+                st.rerun()
+
+    with col2:
+        cluster_num = st.session_state.current_cluster_idx + 1
+        st.markdown(f"<h3 style='text-align: center;'>Cluster {cluster_num} / {len(clusters)}</h3>", unsafe_allow_html=True)
+
+    with col3:
+        if st.button("Next ➡️", use_container_width=True, key="nav_next_bottom"):
+            if st.session_state.current_cluster_idx < len(clusters) - 1:
+                st.session_state.current_cluster_idx += 1
                 save_session_state()
                 st.rerun()
 
