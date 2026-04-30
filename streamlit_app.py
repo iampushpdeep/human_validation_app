@@ -234,6 +234,10 @@ def download_and_extract_nextcloud(zip_url, extract_path="human_validation_sampl
     extract_path = Path(extract_path)
     
     try:
+        # Ensure the URL includes /download to get the actual file
+        if not zip_url.endswith("/download"):
+            zip_url = zip_url.rstrip("/") + "/download"
+        
         with st.spinner("📥 Downloading cluster data from Nextcloud..."):
             response = requests.get(zip_url, timeout=60)
             response.raise_for_status()
