@@ -882,19 +882,6 @@ def show_evaluation_page():
     if not st.session_state.annotations:
         st.session_state.annotations = load_user_annotations(st.session_state.user_name)
     
-    # IMPORTANT: Scroll to top immediately on page load using st.write with unique key
-    # This ensures it runs before any content rendering
-    st.markdown("""
-    <script>
-        // Scroll to top when page loads
-        setTimeout(function() {
-            window.scrollTo(0, 0);
-            document.documentElement.scrollTop = 0;
-            document.body.scrollTop = 0;
-        }, 50);
-    </script>
-    """, unsafe_allow_html=True)
-    
     # Sidebar navigation
     with st.sidebar:
         st.markdown(f"## 👤 {st.session_state.user_name}")
