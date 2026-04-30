@@ -1086,16 +1086,14 @@ def show_evaluation_page():
 
     score = ann["appropriateness_rating"]
     
+    # Conditionally show success message and change button
     if score is not None:
         st.divider()
         st.success(f"✅ You selected: {appropriateness_options[score]}")
         
-        col_change, _ = st.columns([1, 4])
-        with col_change:
-            if st.button("🔄 Change Rating", use_container_width=True, key=f"clear_rating_{cluster_cid}"):
-                ann["appropriateness_rating"] = None
-                save_session_state()
-                st.rerun()
+        if st.button("🔄 Change Rating", use_container_width=True, key=f"clear_rating_{cluster_cid}"):
+            ann["appropriateness_rating"] = None
+            save_session_state()
     
     # Show follow-up questions if rated 1-3
     score = ann["appropriateness_rating"]
