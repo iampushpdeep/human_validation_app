@@ -932,6 +932,7 @@ def show_evaluation_page():
     cluster_id = cluster.get("id", st.session_state.current_cluster_idx)
     cluster_cid = cluster.get("cid", f"cluster_{cluster_id}")
     cluster_label = cluster.get("cluster_name", "N/A")
+    label_category = cluster.get("label_category", "N/A")
     
     # Header with navigation
     col1, col2, col3 = st.columns([1, 2, 1])
@@ -968,7 +969,7 @@ def show_evaluation_page():
         else:
             st.metric("Avg Probability", "N/A")
 
-    st.markdown(f"### **Cluster Name:** `{cluster_label}`")
+    st.markdown(f"### **Label Category:** `{label_category}` | **Cluster Name:** `{cluster_label}`")
     st.markdown(f"**Summary:** {cluster.get('summary', 'No summary available')}")
 
     # Display examples in 2 columns
