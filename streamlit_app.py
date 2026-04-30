@@ -282,37 +282,23 @@ def load_clusters_from_validation_data():
     base_path = Path("human_validation_samples")
     
     if not base_path.exists():
-        st.write(f"❌ DEBUG: Base path does not exist: {base_path.absolute()}")
         return None
     
-    st.write(f"✅ DEBUG: Base path exists: {base_path.absolute()}")
-    all_items = list(base_path.iterdir())
-    st.write(f"📁 DEBUG: Items in base_path: {[item.name for item in all_items]}")
-    
     clusters_list = []
-    label_dirs = [item for item in all_items if item.is_dir() and not item.name.startswith(".") and not item.name.startswith("annotations_")]
-    st.write(f"🏷️ DEBUG: Label directories found: {[d.name for d in label_dirs]}")
+    label_dirs = [item for item in base_path.iterdir() if item.is_dir() and not item.name.startswith(".") and not item.name.startswith("annotations_")]
     
     # Iterate through all label directories
     for label_dir in sorted(label_dirs):
         label_name = label_dir.name
         metadata_path = label_dir / "metadata.json"
         
-        st.write(f"  📂 Checking label: {label_name}")
-        st.write(f"    Metadata path: {metadata_path}")
-        
         if not metadata_path.exists():
-            st.write(f"    ❌ No metadata.json found")
             continue
-        
-        st.write(f"    ✅ metadata.json found")
         
         try:
             with open(metadata_path, "r") as f:
                 metadata = json.load(f)
-            st.write(f"    ✅ Loaded metadata, clusters: {list(metadata.get('clusters', {}).keys())}")
-        except Exception as e:
-            st.write(f"    ❌ Error loading metadata: {e}")
+        except:
             continue
         
         for cluster_str_id, cluster_info in sorted(metadata.get("clusters", {}).items()):
@@ -322,7 +308,6 @@ def load_clusters_from_validation_data():
                 samples_file = cluster_dir / "samples.jsonl"
                 
                 if not samples_file.exists():
-                    st.write(f"      ⚠️ No samples.jsonl for cluster_{cluster_id}")
                     continue
                 
                 examples = []
@@ -347,12 +332,9 @@ def load_clusters_from_validation_data():
                 }
                 
                 clusters_list.append(cluster_obj)
-                st.write(f"      ✅ Loaded cluster_{cluster_id}")
             except Exception as e:
-                st.write(f"      ❌ Error loading cluster_{cluster_id}: {e}")
                 continue
     
-    st.write(f"🎉 DEBUG: Total clusters loaded: {len(clusters_list)}")
     return clusters_list if clusters_list else None
 
 def get_blurred_video_frame(video_path: Path, blur_radius: int = 20):
