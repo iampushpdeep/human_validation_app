@@ -882,6 +882,17 @@ def show_evaluation_page():
     if not st.session_state.annotations:
         st.session_state.annotations = load_user_annotations(st.session_state.user_name)
     
+    # Scroll to top on page load
+    js = '''
+    <script>
+        var body = window.parent.document.querySelector(".main");
+        if (body) {
+            body.scrollTop = 0;
+        }
+    </script>
+    '''
+    st.components.v1.html(js)
+    
     # Sidebar navigation
     with st.sidebar:
         st.markdown(f"## 👤 {st.session_state.user_name}")
