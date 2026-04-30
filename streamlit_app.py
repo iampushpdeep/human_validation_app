@@ -1051,11 +1051,6 @@ def show_evaluation_page():
     
     score = ann["appropriateness_rating"]
     
-    # Ensure session state is synced with annotation state
-    rating_key = f"rating_{cluster_cid}"
-    if score is None and rating_key in st.session_state:
-        del st.session_state[rating_key]
-    
     # Use radio buttons with horizontal layout for instant selection
     selected = st.radio(
         "Select rating:",
@@ -1069,7 +1064,7 @@ def show_evaluation_page():
         }[x],
         index=(score - 1 if score else None),
         horizontal=True,
-        key=rating_key,
+        key=f"rating_{cluster_cid}",
         label_visibility="collapsed"
     )
     
@@ -1087,6 +1082,7 @@ def show_evaluation_page():
         
         if st.button("❌ Clear Selection", use_container_width=True, key=f"clear_rating_{cluster_cid}"):
             ann["appropriateness_rating"] = None
+            st.session_state[f"rating_{cluster_cid}"] = None
             save_session_state()
             st.rerun()
     
