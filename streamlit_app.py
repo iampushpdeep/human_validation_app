@@ -1049,40 +1049,29 @@ def show_evaluation_page():
     
     st.markdown("**Choose one rating:**")
     
-    # Create 5 columns for button selection
-    col1, col2, col3, col4, col5 = st.columns(5)
-    
     score = ann["appropriateness_rating"]
     
-    with col1:
-        label = ("✅ " if score == 1 else "") + "⭐\n**1**\nNot Appropriate"
-        if st.button(label, use_container_width=True, key=f"rate_1_{cluster_cid}"):
-            ann["appropriateness_rating"] = 1
-            save_session_state()
+    # Use radio buttons with horizontal layout for instant selection
+    selected = st.radio(
+        "Select rating:",
+        options=[1, 2, 3, 4, 5],
+        format_func=lambda x: {
+            1: "⭐ Not Appropriate",
+            2: "⭐⭐ Somewhat Inapp.",
+            3: "⭐⭐⭐ Neutral",
+            4: "⭐⭐⭐⭐ Somewhat App.",
+            5: "⭐⭐⭐⭐⭐ Highly App.",
+        }[x],
+        index=(score - 1 if score else None),
+        horizontal=True,
+        key=f"rating_{cluster_cid}",
+        label_visibility="collapsed"
+    )
     
-    with col2:
-        label = ("✅ " if score == 2 else "") + "⭐⭐\n**2**\nSomewhat Inapp."
-        if st.button(label, use_container_width=True, key=f"rate_2_{cluster_cid}"):
-            ann["appropriateness_rating"] = 2
-            save_session_state()
-    
-    with col3:
-        label = ("✅ " if score == 3 else "") + "⭐⭐⭐\n**3**\nNeutral"
-        if st.button(label, use_container_width=True, key=f"rate_3_{cluster_cid}"):
-            ann["appropriateness_rating"] = 3
-            save_session_state()
-    
-    with col4:
-        label = ("✅ " if score == 4 else "") + "⭐⭐⭐⭐\n**4**\nSomewhat App."
-        if st.button(label, use_container_width=True, key=f"rate_4_{cluster_cid}"):
-            ann["appropriateness_rating"] = 4
-            save_session_state()
-    
-    with col5:
-        label = ("✅ " if score == 5 else "") + "⭐⭐⭐⭐⭐\n**5**\nHighly App."
-        if st.button(label, use_container_width=True, key=f"rate_5_{cluster_cid}"):
-            ann["appropriateness_rating"] = 5
-            save_session_state()
+    # Instantly update on selection
+    if selected is not None:
+        ann["appropriateness_rating"] = selected
+        save_session_state()
 
     score = ann["appropriateness_rating"]
     
