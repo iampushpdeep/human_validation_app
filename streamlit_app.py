@@ -882,6 +882,19 @@ def show_evaluation_page():
     if not st.session_state.annotations:
         st.session_state.annotations = load_user_annotations(st.session_state.user_name)
     
+    # IMPORTANT: Scroll to top immediately on page load using st.write with unique key
+    # This ensures it runs before any content rendering
+    st.markdown("""
+    <script>
+        // Scroll to top when page loads
+        setTimeout(function() {
+            window.scrollTo(0, 0);
+            document.documentElement.scrollTop = 0;
+            document.body.scrollTop = 0;
+        }, 50);
+    </script>
+    """, unsafe_allow_html=True)
+    
     # Sidebar navigation
     with st.sidebar:
         st.markdown(f"## 👤 {st.session_state.user_name}")
@@ -935,9 +948,6 @@ def show_evaluation_page():
     cluster_cid = cluster.get("cid", f"cluster_{cluster_id}")
     cluster_label = cluster.get("cluster_name", "N/A")
     label_category = cluster.get("label_category", "N/A")
-    
-    # Anchor point for scrolling
-    st.markdown('<div id="cluster-label-validator"></div>', unsafe_allow_html=True)
     
     # Navigation buttons at top with scroll to top behavior
     col1, col2, col3 = st.columns([1, 2, 1])
@@ -1270,20 +1280,6 @@ def show_evaluation_page():
                 st.session_state.current_cluster_idx += 1
                 save_session_state()
                 st.rerun()
-    
-    # Scroll to top after page renders (placed at end so it runs after all content loads)
-    st.markdown("""
-    <script>
-        setTimeout(function() {
-            var element = document.getElementById('cluster-label-validator');
-            if (element) {
-                element.scrollIntoView({behavior: 'smooth', block: 'start'});
-            } else {
-                window.scrollTo(0, 0);
-            }
-        }, 100);
-    </script>
-    """, unsafe_allow_html=True)
 
 # ============================================================================
 # MAIN APP ROUTER
