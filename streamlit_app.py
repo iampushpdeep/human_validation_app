@@ -1082,7 +1082,6 @@ def show_evaluation_page():
         
         if st.button("❌ Clear Selection", use_container_width=True, key=f"clear_rating_{cluster_cid}"):
             ann["appropriateness_rating"] = None
-            st.session_state[f"rating_{cluster_cid}"] = None
             save_session_state()
             st.rerun()
     
