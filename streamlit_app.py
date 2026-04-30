@@ -968,7 +968,7 @@ def show_evaluation_page():
         else:
             st.metric("Avg Probability", "N/A")
 
-    st.markdown(f"### **Label:** `{cluster_label}`")
+    st.markdown(f"### **Cluster Name:** `{cluster_label}`")
     st.markdown(f"**Summary:** {cluster.get('summary', 'No summary available')}")
 
     # Display examples in 2 columns
