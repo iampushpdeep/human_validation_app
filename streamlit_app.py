@@ -997,21 +997,17 @@ def show_evaluation_page():
 
     # Annotation form with evaluation criteria
     st.markdown("### Your Evaluation")
-    
     # Show scores reference table
-    st.markdown("#### Rating Scale")
-    scores_data = {
-        "Score": ["5", "4", "3", "2", "1"],
-        "Rating": ["⭐⭐⭐⭐⭐ Highly Appropriate", "⭐⭐⭐⭐ Somewhat Appropriate", "⭐⭐⭐ Neutral", "⭐⭐ Somewhat Inappropriate", "⭐ Not Appropriate"],
-        "Description": [
-            "Name perfectly describes the content - specific and unambiguous",
-            "Name mostly fits with minor issues",
-            "Name is partially accurate with noticeable gaps",
-            "Name has significant issues - many posts don't fit well",
-            "Name is misleading or completely misrepresents content"
-        ]
-    }
-    st.table(scores_data)
+    st.markdown("#### Rating Guide")
+    st.markdown("""
+| Score | Meaning |
+|-------|---------|
+| 5 | ✅ **Highly appropriate** - The name clearly and accurately represents all the content in this cluster. It's specific, unambiguous, and perfectly captures the essence of the posts. |
+| 4 | 👍 **Somewhat appropriate** - The name is mostly accurate and describes the general theme well, though there might be minor issues or slight room for improvement. |
+| 3 | 🤷 **Neutral** - The name is partially accurate but has noticeable gaps or ambiguities. Some posts fit well, others don't. Improvements would be beneficial. |
+| 2 | 👎 **Somewhat inappropriate** - The name has significant issues. Many posts don't fit well, or the name is confusing/misleading in important ways. |
+| 1 | ❌ **Not appropriate** - The name is misleading, irrelevant, or completely misrepresents the content. It fails to capture what these posts are about. |
+""")
 
     # Initialize annotation if doesn't exist
     if cluster_cid not in st.session_state.annotations:
@@ -1102,22 +1098,8 @@ def show_evaluation_page():
         st.divider()
         st.success(f"✅ You selected: {appropriateness_options[score]}")
         st.divider()
-        
-        # Show the scoring guide table
-        st.markdown("""
-| Score | Meaning |
-|-------|---------|
-| 5 | ✅ **Highly appropriate** - The name clearly and accurately represents all the content in this cluster. It's specific, unambiguous, and perfectly captures the essence of the posts. |
-| 4 | 👍 **Somewhat appropriate** - The name is mostly accurate and describes the general theme well, though there might be minor issues or slight room for improvement. |
-| 3 | 🤷 **Neutral** - The name is partially accurate but has noticeable gaps or ambiguities. Some posts fit well, others don't. Improvements would be beneficial. |
-| 2 | 👎 **Somewhat inappropriate** - The name has significant issues. Many posts don't fit well, or the name is confusing/misleading in important ways. |
-| 1 | ❌ **Not appropriate** - The name is misleading, irrelevant, or completely misrepresents the content. It fails to capture what these posts are about. |
-""")
-        
-        st.divider()
     else:
         st.info("👆 **Click one of the 5 options above to rate this cluster**")
-        st.stop()
 
     # ============================================================================
     # IF LOW/NEUTRAL SCORE (1-3): Show follow-up questions
