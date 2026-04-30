@@ -90,6 +90,8 @@ if "export_data" not in st.session_state:
     st.session_state.export_data = None
 if "export_count" not in st.session_state:
     st.session_state.export_count = 0
+if "clusters_loaded_attempted" not in st.session_state:
+    st.session_state.clusters_loaded_attempted = False
 
 # ============================================================================
 # UTILITY FUNCTIONS
@@ -1269,8 +1271,10 @@ def show_evaluation_page():
 # MAIN APP ROUTER
 # ============================================================================
 
-# Load clusters
-if not st.session_state.clusters:
+# Load clusters (only attempt once per session)
+if not st.session_state.clusters and not st.session_state.clusters_loaded_attempted:
+    st.session_state.clusters_loaded_attempted = True
+    
     clusters_data = load_clusters_from_validation_data()
     if clusters_data:
         st.session_state.clusters = clusters_data
