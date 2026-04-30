@@ -936,6 +936,9 @@ def show_evaluation_page():
     cluster_label = cluster.get("cluster_name", "N/A")
     label_category = cluster.get("label_category", "N/A")
     
+    # Anchor point for scrolling
+    st.markdown('<div id="cluster-label-validator"></div>', unsafe_allow_html=True)
+    
     # Navigation buttons at top with scroll to top behavior
     col1, col2, col3 = st.columns([1, 2, 1])
     
@@ -1272,7 +1275,12 @@ def show_evaluation_page():
     st.markdown("""
     <script>
         setTimeout(function() {
-            window.scrollTo(0, 0);
+            var element = document.getElementById('cluster-label-validator');
+            if (element) {
+                element.scrollIntoView({behavior: 'smooth', block: 'start'});
+            } else {
+                window.scrollTo(0, 0);
+            }
         }, 100);
     </script>
     """, unsafe_allow_html=True)
