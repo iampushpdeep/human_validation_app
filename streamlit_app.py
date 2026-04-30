@@ -882,21 +882,6 @@ def show_evaluation_page():
     if not st.session_state.annotations:
         st.session_state.annotations = load_user_annotations(st.session_state.user_name)
     
-    # Scroll to top on page load using #cluster-label-validator anchor
-    js = '''
-    <script>
-        var body = window.parent.document.querySelector(".main");
-        if (body) {
-            body.scrollTop = 0;
-        }
-        var element = window.parent.document.querySelector("#cluster-label-validator");
-        if (element) {
-            element.scrollIntoView({behavior: 'auto', block: 'start'});
-        }
-    </script>
-    '''
-    st.components.v1.html(js)
-    
     # Sidebar navigation
     with st.sidebar:
         st.markdown(f"## 👤 {st.session_state.user_name}")
@@ -950,9 +935,6 @@ def show_evaluation_page():
     cluster_cid = cluster.get("cid", f"cluster_{cluster_id}")
     cluster_label = cluster.get("cluster_name", "N/A")
     label_category = cluster.get("label_category", "N/A")
-    
-    # Anchor point for scrolling to top
-    st.markdown('<div id="cluster-label-validator"></div>', unsafe_allow_html=True)
     
     # Navigation buttons at top with scroll to top behavior
     col1, col2, col3 = st.columns([1, 2, 1])
