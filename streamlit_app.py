@@ -882,18 +882,16 @@ def show_evaluation_page():
     if not st.session_state.annotations:
         st.session_state.annotations = load_user_annotations(st.session_state.user_name)
     
-    # Initialize scroll to top flag
-    if "scroll_to_top" not in st.session_state:
-        st.session_state.scroll_to_top = False
-    
-    # Scroll to top if navigation button was clicked at bottom
-    if st.session_state.scroll_to_top:
-        st.markdown("""
-        <script>
-            window.scrollTo(0, 0);
-        </script>
-        """, unsafe_allow_html=True)
-        st.session_state.scroll_to_top = False
+    # Add anchor at very top with scroll script
+    st.markdown('<div id="top"></div>', unsafe_allow_html=True)
+    st.markdown("""
+    <script>
+        var element = document.getElementById('top');
+        if (element) {
+            element.scrollIntoView({behavior: 'auto', block: 'start'});
+        }
+    </script>
+    """, unsafe_allow_html=True)
     
     # Sidebar navigation
     with st.sidebar:
@@ -956,7 +954,6 @@ def show_evaluation_page():
         if st.button("⬅️ Previous", use_container_width=True, key="nav_prev_top"):
             if st.session_state.current_cluster_idx > 0:
                 st.session_state.current_cluster_idx -= 1
-                st.session_state.scroll_to_top = True
                 save_session_state()
             st.rerun()
 
@@ -968,7 +965,6 @@ def show_evaluation_page():
         if st.button("Next ➡️", use_container_width=True, key="nav_next_top"):
             if st.session_state.current_cluster_idx < len(clusters) - 1:
                 st.session_state.current_cluster_idx += 1
-                st.session_state.scroll_to_top = True
                 save_session_state()
             st.rerun()
     
@@ -1269,7 +1265,6 @@ def show_evaluation_page():
         if st.button("⬅️ Previous", use_container_width=True, key="nav_prev_bottom"):
             if st.session_state.current_cluster_idx > 0:
                 st.session_state.current_cluster_idx -= 1
-                st.session_state.scroll_to_top = True
                 save_session_state()
                 st.rerun()
 
@@ -1281,7 +1276,6 @@ def show_evaluation_page():
         if st.button("Next ➡️", use_container_width=True, key="nav_next_bottom"):
             if st.session_state.current_cluster_idx < len(clusters) - 1:
                 st.session_state.current_cluster_idx += 1
-                st.session_state.scroll_to_top = True
                 save_session_state()
                 st.rerun()
 
