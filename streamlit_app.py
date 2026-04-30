@@ -338,6 +338,7 @@ def load_clusters_from_validation_data():
     
     return clusters_list if clusters_list else None
 
+@st.cache_data
 def get_blurred_video_frame(video_path: Path, blur_radius: int = 20):
     """Extract first frame from video and blur it"""
     if not HAS_CV2:
