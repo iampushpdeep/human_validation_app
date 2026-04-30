@@ -882,17 +882,6 @@ def show_evaluation_page():
     if not st.session_state.annotations:
         st.session_state.annotations = load_user_annotations(st.session_state.user_name)
     
-    # Add anchor at very top with scroll script
-    st.markdown('<div id="top"></div>', unsafe_allow_html=True)
-    st.markdown("""
-    <script>
-        var element = document.getElementById('top');
-        if (element) {
-            element.scrollIntoView({behavior: 'auto', block: 'start'});
-        }
-    </script>
-    """, unsafe_allow_html=True)
-    
     # Sidebar navigation
     with st.sidebar:
         st.markdown(f"## 👤 {st.session_state.user_name}")
@@ -1278,6 +1267,15 @@ def show_evaluation_page():
                 st.session_state.current_cluster_idx += 1
                 save_session_state()
                 st.rerun()
+    
+    # Scroll to top after page renders (placed at end so it runs after all content loads)
+    st.markdown("""
+    <script>
+        setTimeout(function() {
+            window.scrollTo(0, 0);
+        }, 100);
+    </script>
+    """, unsafe_allow_html=True)
 
 # ============================================================================
 # MAIN APP ROUTER
