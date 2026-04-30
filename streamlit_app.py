@@ -940,6 +940,12 @@ def show_evaluation_page():
     st.markdown(f"<h2 style='text-align: center;'>Label Category: <span style='color: #1f77b4;'>{label_category}</span> | Cluster Name: <span style='color: #ff7f0e;'>{cluster_label}</span></h2>", unsafe_allow_html=True)
 
     st.divider()
+    
+    # Show summary at top
+    st.markdown("#### 📋 Cluster Summary")
+    st.write(cluster.get('summary', 'No summary available'))
+
+    st.divider()
 
     # Display examples in 2 columns
     st.markdown(f"#### Examples ({len(cluster.get('examples', []))} samples):")
@@ -975,12 +981,6 @@ def show_evaluation_page():
     else:
         st.info("No examples available")
 
-    st.divider()
-
-    # Show summary below examples
-    st.markdown("#### 📋 Cluster Summary")
-    st.write(cluster.get('summary', 'No summary available'))
-    
     st.divider()
     
     st.markdown("### Your Evaluation")
@@ -1214,6 +1214,11 @@ def show_evaluation_page():
     completed = sum(1 for c in clusters if is_cluster_evaluated(st.session_state.annotations, c.get("cid", f"cluster_{clusters.index(c)}")))
     st.progress(completed / len(clusters) if clusters else 0)
     st.caption(f"Progress: {completed}/{len(clusters)} clusters evaluated")
+    
+    st.divider()
+    
+    # Show cluster info at bottom too
+    st.markdown(f"<h3 style='text-align: center;'>Label Category: <span style='color: #1f77b4;'>{label_category}</span> | Cluster Name: <span style='color: #ff7f0e;'>{cluster_label}</span></h3>", unsafe_allow_html=True)
     
     st.divider()
     
