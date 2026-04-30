@@ -251,6 +251,24 @@ def download_and_extract_nextcloud(zip_url, extract_path="human_validation_sampl
             with zipfile.ZipFile(io.BytesIO(response.content)) as zip_ref:
                 zip_ref.extractall(extract_path)
         
+        # Handle nested folder structure (if zip had a single parent folder)
+        items = list(extract_path.iterdir())
+        non_annotation_items = [item for item in items if not item.name.startswith("annotations_")]
+        
+        if len(non_annotation_items) == 1 and non_annotation_items[0].is_dir():
+            nested_dir = non_annotation_items[0]
+            nested_items = list(nested_dir.iterdir())
+            
+            # If the nested folder contains label directories, move them up
+            if nested_items and any((nested_dir / item.name / "metadata.json").exists() for item in nested_items if (nested_dir / item.name).is_dir()):
+                for item in nested_items:
+                    src = nested_dir / item.name
+                    dst = extract_path / item.name
+                    if dst.exists():
+                        shutil.rmtree(dst)
+                    src.rename(dst)
+                nested_dir.rmdir()
+        
         st.success("✅ Data downloaded and extracted successfully!")
         return True
     except Exception as e:
