@@ -277,6 +277,7 @@ def download_and_extract_nextcloud(zip_url, extract_path="human_validation_sampl
         st.error(f"❌ Error downloading data: {str(e)}")
         return False
 
+@st.cache_resource
 def load_clusters_from_validation_data():
     """Load clusters from all label directories in human_validation_samples"""
     base_path = Path("human_validation_samples")
