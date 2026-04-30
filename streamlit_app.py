@@ -1047,55 +1047,53 @@ def show_evaluation_page():
         1: "❌ Not appropriate - Name is misleading or irrelevant"
     }
     
+    st.markdown("**Choose one rating:**")
+    
+    # Create 5 columns for button selection
+    col1, col2, col3, col4, col5 = st.columns(5)
+    
     score = ann["appropriateness_rating"]
     
-    if score is None:
-        st.info("👆 **Click one of the 5 options below to rate this cluster:**")
-        
-        # Use radio with horizontal layout for fast response
-        selected = st.radio(
-            "Choose one rating:",
-            options=[1, 2, 3, 4, 5],
-            format_func=lambda x: {
-                1: "⭐ Not Appropriate",
-                2: "⭐⭐ Somewhat Inappropriate",
-                3: "⭐⭐⭐ Neutral",
-                4: "⭐⭐⭐⭐ Somewhat Appropriate",
-                5: "⭐⭐⭐⭐⭐ Highly Appropriate",
-            }[x],
-            horizontal=True,
-            key=f"rating_{cluster_cid}",
-            label_visibility="collapsed"
-        )
-        
-        # Update annotation without full rerun
-        if selected is not None:
-            ann["appropriateness_rating"] = selected
+    with col1:
+        if st.button("⭐\n**1**\nNot Appropriate", use_container_width=True, key=f"rate_1_{cluster_cid}"):
+            ann["appropriateness_rating"] = 1
             save_session_state()
-            st.rerun()
-    else:
-        # Rating already selected - show it with clear button
-        col_select, col_clear = st.columns([4, 1])
+    
+    with col2:
+        if st.button("⭐⭐\n**2**\nSomewhat Inapp.", use_container_width=True, key=f"rate_2_{cluster_cid}"):
+            ann["appropriateness_rating"] = 2
+            save_session_state()
+    
+    with col3:
+        if st.button("⭐⭐⭐\n**3**\nNeutral", use_container_width=True, key=f"rate_3_{cluster_cid}"):
+            ann["appropriateness_rating"] = 3
+            save_session_state()
+    
+    with col4:
+        if st.button("⭐⭐⭐⭐\n**4**\nSomewhat App.", use_container_width=True, key=f"rate_4_{cluster_cid}"):
+            ann["appropriateness_rating"] = 4
+            save_session_state()
+    
+    with col5:
+        if st.button("⭐⭐⭐⭐⭐\n**5**\nHighly App.", use_container_width=True, key=f"rate_5_{cluster_cid}"):
+            ann["appropriateness_rating"] = 5
+            save_session_state()
+
+    score = ann["appropriateness_rating"]
+    
+    if score is not None:
+        st.divider()
+        st.success(f"✅ You selected: {appropriateness_options[score]}")
         
-        with col_select:
-            st.success(f"✅ You selected: {[
-                None,
-                '⭐ Not Appropriate',
-                '⭐⭐ Somewhat Inappropriate',
-                '⭐⭐⭐ Neutral',
-                '⭐⭐⭐⭐ Somewhat Appropriate',
-                '⭐⭐⭐⭐⭐ Highly Appropriate'
-            ][score]}")
-        
-        with col_clear:
-            if st.button("🔄 Change", use_container_width=True, key=f"clear_rating_{cluster_cid}"):
+        col_change, _ = st.columns([1, 4])
+        with col_change:
+            if st.button("🔄 Change Rating", use_container_width=True, key=f"clear_rating_{cluster_cid}"):
                 ann["appropriateness_rating"] = None
+                save_session_state()
                 st.rerun()
     
-    # Update score after potential change
+    # Show follow-up questions if rated 1-3
     score = ann["appropriateness_rating"]
-
-    # Show follow-up questions if rated low/neutral
     if score in [1, 2, 3]:
         st.divider()
         st.markdown("### Step 2: Help Us Improve")
