@@ -233,6 +233,11 @@ def download_and_extract_nextcloud(zip_url, extract_path="human_validation_sampl
     """Download zipped data from Nextcloud and extract it"""
     extract_path = Path(extract_path)
     
+    # Check if data already exists locally
+    if extract_path.exists() and list(extract_path.glob("*/metadata.json")):
+        st.info("✅ Cluster data already exists locally, skipping download.")
+        return True
+    
     try:
         # Ensure the URL includes /download to get the actual file
         if not zip_url.endswith("/download"):
@@ -1255,12 +1260,11 @@ if not st.session_state.clusters:
         # No clusters found locally - try to download from Nextcloud
         try:
             nextcloud_url = st.secrets.get("sharecloudlink")
-            if nextcloud_url:
-                if download_and_extract_nextcloud(nextcloud_url):
-                    # Reload clusters after download
-                    clusters_data = load_clusters_from_validation_data()
-                    if clusters_data:
-                        st.session_state.clusters = clusters_data
+            if nextcloud_url and download_and_extract_nextcloud(nextcloud_url):
+                # Reload clusters after download
+                clusters_data = load_clusters_from_validation_data()
+                if clusters_data:
+                    st.session_state.clusters = clusters_data
         except Exception as e:
             st.warning("⚠️ Could not load cluster data from Nextcloud")
 
