@@ -4,6 +4,9 @@ import jsonlines
 import numpy as np
 import os
 import shutil
+import requests
+import zipfile
+import io
 from pathlib import Path
 from datetime import datetime
 from PIL import Image, ImageFilter
@@ -14,12 +17,6 @@ try:
     HAS_CV2 = True
 except ImportError:
     HAS_CV2 = False
-
-try:
-    import gdown
-    HAS_GDOWN = True
-except ImportError:
-    HAS_GDOWN = False
 
 # Page config
 st.set_page_config(page_title="Cluster Label Validator", layout="wide", initial_sidebar_state="expanded")
@@ -232,23 +229,23 @@ def delete_all_annotations():
     except:
         return False
 
-def download_from_google_drive(folder_id, save_path="human_validation_samples"):
-    """Download folder from Google Drive using gdown"""
-    if not HAS_GDOWN:
-        st.error("gdown not installed. Cannot download from Google Drive.")
-        return False
-    
-    save_path = Path(save_path)
-    save_path.mkdir(parents=True, exist_ok=True)
+def download_and_extract_nextcloud(zip_url, extract_path="human_validation_samples"):
+    """Download zipped data from Nextcloud and extract it"""
+    extract_path = Path(extract_path)
     
     try:
-        with st.spinner("📥 Downloading from Google Drive..."):
-            url = f"https://drive.google.com/drive/folders/{folder_id}"
-            gdown.download_folder(url, output=str(save_path), quiet=True)
-        st.success("✅ Downloaded successfully!")
+        with st.spinner("📥 Downloading cluster data from Nextcloud..."):
+            response = requests.get(zip_url, timeout=60)
+            response.raise_for_status()
+            
+            # Extract zip file
+            with zipfile.ZipFile(io.BytesIO(response.content)) as zip_ref:
+                zip_ref.extractall(extract_path)
+        
+        st.success("✅ Data downloaded and extracted successfully!")
         return True
     except Exception as e:
-        st.error(f"Error downloading: {e}")
+        st.error(f"❌ Error downloading data: {str(e)}")
         return False
 
 def load_clusters_from_validation_data():
@@ -1251,19 +1248,17 @@ if not st.session_state.clusters:
     if clusters_data:
         st.session_state.clusters = clusters_data
     else:
-        # No clusters found - try to download from Google Drive if folder ID in secrets
+        # No clusters found locally - try to download from Nextcloud
         try:
-            google_folder_id = st.secrets.get("GOOGLE_DRIVE_FOLDER_ID")
-            if google_folder_id:
-                with st.spinner("📥 Downloading cluster data from Google Drive..."):
-                    if download_from_google_drive(google_folder_id):
-                        # Reload clusters after download
-                        clusters_data = load_clusters_from_validation_data()
-                        if clusters_data:
-                            st.session_state.clusters = clusters_data
-                        st.success("✅ Clusters downloaded and loaded!")
+            nextcloud_url = st.secrets.get("sharecloudlink")
+            if nextcloud_url:
+                if download_and_extract_nextcloud(nextcloud_url):
+                    # Reload clusters after download
+                    clusters_data = load_clusters_from_validation_data()
+                    if clusters_data:
+                        st.session_state.clusters = clusters_data
         except Exception as e:
-            pass  # Secrets not available or download failed
+            st.warning("⚠️ Could not load cluster data from Nextcloud")
 
 # If clusters still missing, show error
 if not st.session_state.clusters and st.session_state.app_page != "login":
