@@ -956,19 +956,6 @@ def show_evaluation_page():
 
     st.divider()
 
-    # Display cluster metrics
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        st.metric("Cluster ID", cluster_id)
-    with col2:
-        st.metric("Total Samples", cluster.get("total_samples", len(cluster.get("examples", []))))
-    with col3:
-        if cluster.get("examples"):
-            avg_prob = np.mean([ex.get("cluster_probability", 0.85) for ex in cluster.get("examples", [])])
-            st.metric("Avg Probability", f"{float(avg_prob):.2f}")
-        else:
-            st.metric("Avg Probability", "N/A")
-
     st.markdown(f"### **Label Category:** `{label_category}` | **Cluster Name:** `{cluster_label}`")
     st.markdown(f"**Summary:** {cluster.get('summary', 'No summary available')}")
 
