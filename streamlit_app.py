@@ -983,6 +983,13 @@ def show_evaluation_page():
 
     st.divider()
     
+    # Show cluster info and summary before evaluation
+    st.markdown(f"#### Label Category: `{label_category}` | Cluster Name: `{cluster_label}`")
+    st.markdown("#### 📋 Summary")
+    st.write(cluster.get('summary', 'No summary available'))
+    
+    st.divider()
+    
     st.markdown("### Your Evaluation")
     # Show scores reference table
     st.markdown("#### Rating Guide")
@@ -1214,11 +1221,6 @@ def show_evaluation_page():
     completed = sum(1 for c in clusters if is_cluster_evaluated(st.session_state.annotations, c.get("cid", f"cluster_{clusters.index(c)}")))
     st.progress(completed / len(clusters) if clusters else 0)
     st.caption(f"Progress: {completed}/{len(clusters)} clusters evaluated")
-    
-    st.divider()
-    
-    # Show cluster info at bottom too
-    st.markdown(f"<h3 style='text-align: center;'>Label Category: <span style='color: #1f77b4;'>{label_category}</span> | Cluster Name: <span style='color: #ff7f0e;'>{cluster_label}</span></h3>", unsafe_allow_html=True)
     
     st.divider()
     
