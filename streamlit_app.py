@@ -936,6 +936,29 @@ def show_evaluation_page():
     cluster_label = cluster.get("cluster_name", "N/A")
     label_category = cluster.get("label_category", "N/A")
     
+    # Navigation buttons at top with scroll to top behavior
+    col1, col2, col3 = st.columns([1, 2, 1])
+    
+    with col1:
+        if st.button("⬅️ Previous", use_container_width=True, key="nav_prev_top"):
+            if st.session_state.current_cluster_idx > 0:
+                st.session_state.current_cluster_idx -= 1
+                save_session_state()
+            st.rerun()
+
+    with col2:
+        cluster_num = st.session_state.current_cluster_idx + 1
+        st.markdown(f"<h3 style='text-align: center;'>Cluster {cluster_num} / {len(clusters)}</h3>", unsafe_allow_html=True)
+
+    with col3:
+        if st.button("Next ➡️", use_container_width=True, key="nav_next_top"):
+            if st.session_state.current_cluster_idx < len(clusters) - 1:
+                st.session_state.current_cluster_idx += 1
+                save_session_state()
+            st.rerun()
+    
+    st.divider()
+    
     # Show cluster info prominently at top
     st.markdown(f"<h2 style='text-align: center;'>Label Category: <span style='color: #1f77b4;'>{label_category}</span> | Cluster Name: <span style='color: #ff7f0e;'>{cluster_label}</span></h2>", unsafe_allow_html=True)
 
