@@ -958,8 +958,10 @@ def show_evaluation_page():
 
     st.divider()
 
-    st.markdown(f"### **Label Category:** `{label_category}` | **Cluster Name:** `{cluster_label}`")
-    st.markdown(f"**Summary:** {cluster.get('summary', 'No summary available')}")
+    # Show cluster info prominently at top
+    st.markdown(f"<h2 style='text-align: center;'>Label Category: <span style='color: #1f77b4;'>{label_category}</span> | Cluster Name: <span style='color: #ff7f0e;'>{cluster_label}</span></h2>", unsafe_allow_html=True)
+
+    st.divider()
 
     # Display examples in 2 columns
     st.markdown(f"#### Examples ({len(cluster.get('examples', []))} samples):")
@@ -997,7 +999,12 @@ def show_evaluation_page():
 
     st.divider()
 
-    # Annotation form with evaluation criteria
+    # Show summary below examples
+    st.markdown("#### 📋 Cluster Summary")
+    st.write(cluster.get('summary', 'No summary available'))
+    
+    st.divider()
+    
     st.markdown("### Your Evaluation")
     # Show scores reference table
     st.markdown("#### Rating Guide")
@@ -1229,6 +1236,26 @@ def show_evaluation_page():
     completed = sum(1 for c in clusters if is_cluster_evaluated(st.session_state.annotations, c.get("cid", f"cluster_{clusters.index(c)}")))
     st.progress(completed / len(clusters) if clusters else 0)
     st.caption(f"Progress: {completed}/{len(clusters)} clusters evaluated")
+    
+    st.divider()
+    
+    # Cluster navigation at bottom
+    st.markdown("### 🗂️ Navigate Clusters")
+    nav_cols = st.columns(5)
+    
+    for idx, c in enumerate(clusters):
+        col_idx = idx % 5
+        cid = c.get("cid", f"cluster_{idx}")
+        is_completed = "✅" if is_cluster_evaluated(st.session_state.annotations, cid) else "⭕"
+        is_current = "→ " if st.session_state.current_cluster_idx == idx else ""
+        cluster_short_name = c.get('cluster_name', 'N/A')[:15]
+        
+        with nav_cols[col_idx]:
+            if st.button(f"{is_current}[{idx+1}] {is_completed}\n{cluster_short_name}", 
+                        use_container_width=True, key=f"nav_cluster_bottom_{idx}"):
+                st.session_state.current_cluster_idx = idx
+                save_session_state()
+                st.rerun()
 
 # ============================================================================
 # MAIN APP ROUTER
