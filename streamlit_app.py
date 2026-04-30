@@ -322,7 +322,7 @@ def load_clusters_from_validation_data():
                 cluster_obj = {
                     "id": cluster_id,
                     "cid": unique_cid,
-                    "label": cluster_info.get("name", f"Cluster {cluster_id}"),
+                    "cluster_name": cluster_info.get("name", f"Cluster {cluster_id}"),
                     "label_category": label_name,
                     "summary": cluster_info.get("summary", ""),
                     "total_samples": cluster_info.get("num_samples", len(examples)),
@@ -845,7 +845,7 @@ def show_summary_page():
             with col1:
                 st.caption(f"ID: {c.get('id', idx)}")
             with col2:
-                st.caption(f"{c.get('label', 'N/A')}")
+                st.caption(f"{c.get('cluster_name', 'N/A')}")
             with col3:
                 st.caption(stars)
     
@@ -913,7 +913,7 @@ def show_evaluation_page():
             is_completed = "✅" if is_cluster_evaluated(st.session_state.annotations, cid) else "⭕"
             is_current = "→" if st.session_state.current_cluster_idx == idx else " "
             
-            if st.button(f"{is_current} [{idx+1}] {is_completed} {c.get('label', 'N/A')[:30]}", 
+            if st.button(f"{is_current} [{idx+1}] {is_completed} {c.get('cluster_name', 'N/A')[:30]}", 
                         use_container_width=True, key=f"nav_cluster_{idx}"):
                 st.session_state.current_cluster_idx = idx
                 st.rerun()
@@ -931,7 +931,7 @@ def show_evaluation_page():
     cluster = clusters[st.session_state.current_cluster_idx]
     cluster_id = cluster.get("id", st.session_state.current_cluster_idx)
     cluster_cid = cluster.get("cid", f"cluster_{cluster_id}")
-    cluster_label = cluster.get("label", "N/A")
+    cluster_label = cluster.get("cluster_name", "N/A")
     
     # Header with navigation
     col1, col2, col3 = st.columns([1, 2, 1])
