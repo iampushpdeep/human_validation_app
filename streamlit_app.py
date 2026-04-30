@@ -1051,10 +1051,15 @@ def show_evaluation_page():
     
     score = ann["appropriateness_rating"]
     
-    # Clear widget state if annotation is None to ensure fresh radio rendering
-    rating_key = f"rating_{cluster_cid}"
-    if score is None and rating_key in st.session_state:
-        del st.session_state[rating_key]
+    # Initialize clear counter to force new widget key on clear
+    if "rating_clear_counter" not in st.session_state:
+        st.session_state.rating_clear_counter = {}
+    
+    if cluster_cid not in st.session_state.rating_clear_counter:
+        st.session_state.rating_clear_counter[cluster_cid] = 0
+    
+    # Use counter in key to force widget reset on clear
+    rating_key = f"rating_{cluster_cid}_{st.session_state.rating_clear_counter[cluster_cid]}"
     
     # Use radio buttons with horizontal layout for instant selection
     selected = st.radio(
@@ -1088,6 +1093,7 @@ def show_evaluation_page():
         if st.button("❌ Clear Selection", use_container_width=True, key=f"clear_rating_{cluster_cid}"):
             ann["appropriateness_rating"] = None
             save_session_state()
+            st.session_state.rating_clear_counter[cluster_cid] += 1
             st.rerun()
     
     # Show follow-up questions if rated 1-3
