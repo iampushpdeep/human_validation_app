@@ -55,6 +55,7 @@ def save_session_state():
             "current_cluster_idx": st.session_state.current_cluster_idx,
             "annotations": st.session_state.annotations,
             "unblurred_images": list(st.session_state.unblurred_images),
+            "selected_label": st.session_state.selected_label,
             "last_saved": datetime.now().isoformat()
         }
         with open(get_session_file(), "w") as f:
@@ -93,10 +94,20 @@ if "export_data" not in st.session_state:
     st.session_state.export_data = None
 if "export_count" not in st.session_state:
     st.session_state.export_count = 0
+if "selected_label" not in st.session_state:
+    st.session_state.selected_label = session_data.get("selected_label", "")
 
 # ============================================================================
 # UTILITY FUNCTIONS
 # ============================================================================
+
+def get_available_labels():
+    """Get all available label categories (subdirectories in human_validation_samples)"""
+    base_path = Path("human_validation_samples")
+    if not base_path.exists():
+        return []
+    labels = [d.name for d in base_path.iterdir() if d.is_dir()]
+    return sorted(labels)
 
 def is_cluster_evaluated(annotations, cluster_cid):
     """Check if a cluster has been genuinely evaluated (not just pre-selected defaults)"""
@@ -110,14 +121,14 @@ def sanitize_name(name):
     """Convert name to safe filename"""
     return name.lower().replace(" ", "_")
 
-def get_user_annotation_file(user_name):
-    """Get per-user annotation file path"""
+def get_user_annotation_file(user_name, label):
+    """Get per-user annotation file path for a specific label"""
     safe_name = sanitize_name(user_name)
-    return Path("human_validation_samples/intolerant") / f"annotations_{safe_name}.json"
+    return Path(f"human_validation_samples/{label}") / f"annotations_{safe_name}.json"
 
-def load_user_annotations(user_name):
-    """Load user's previous annotations"""
-    filepath = get_user_annotation_file(user_name)
+def load_user_annotations(user_name, label):
+    """Load user's previous annotations for a specific label"""
+    filepath = get_user_annotation_file(user_name, label)
     
     if not filepath.exists():
         return {}
@@ -134,9 +145,9 @@ def load_user_annotations(user_name):
     except Exception as e:
         return {}
 
-def save_user_annotations(user_name, annotations):
+def save_user_annotations(user_name, label, annotations):
     """Save user's annotations with timestamp - only completed evaluations"""
-    filepath = get_user_annotation_file(user_name)
+    filepath = get_user_annotation_file(user_name, label)
     filepath.parent.mkdir(parents=True, exist_ok=True)
     
     # Filter out incomplete annotations (those without a rating)
@@ -154,6 +165,7 @@ def save_user_annotations(user_name, annotations):
     
     data = {
         "user_name": user_name,
+        "label": label,
         "timestamp": datetime.now().isoformat(),
         "annotations": completed_annotations
     }
@@ -166,9 +178,9 @@ def save_user_annotations(user_name, annotations):
     except Exception as e:
         return False
 
-def get_all_users_annotations():
-    """Load all user annotations from files (for admin) - excludes admin user"""
-    base_path = Path("human_validation_samples/intolerant")
+def get_all_users_annotations(label):
+    """Load all user annotations from files for a specific label (for admin) - excludes admin user"""
+    base_path = Path(f"human_validation_samples/{label}")
     all_users_data = {}
     
     if not base_path.exists():
@@ -200,9 +212,9 @@ def get_all_users_annotations():
     
     return all_users_data
 
-def delete_user_annotations(user_name):
-    """Delete a specific user's annotations file"""
-    filepath = get_user_annotation_file(user_name)
+def delete_user_annotations(user_name, label):
+    """Delete a specific user's annotations file for a label"""
+    filepath = get_user_annotation_file(user_name, label)
     if filepath.exists():
         try:
             filepath.unlink()
@@ -211,9 +223,9 @@ def delete_user_annotations(user_name):
             return False
     return False
 
-def delete_all_annotations():
-    """Delete all user annotation files"""
-    base_path = Path("human_validation_samples/intolerant")
+def delete_all_annotations(label):
+    """Delete all user annotation files for a specific label"""
+    base_path = Path(f"human_validation_samples/{label}")
     if not base_path.exists():
         return False
     
@@ -243,9 +255,9 @@ def download_from_google_drive(folder_id, save_path="human_validation_samples"):
         st.error(f"Error downloading: {e}")
         return False
 
-def load_clusters_from_validation_data():
-    """Load clusters from human_validation_samples/intolerant directory"""
-    base_path = Path("human_validation_samples/intolerant")
+def load_clusters_from_validation_data(label):
+    """Load clusters from human_validation_samples/{label} directory"""
+    base_path = Path(f"human_validation_samples/{label}")
     
     if not base_path.exists():
         return None
@@ -312,7 +324,7 @@ def get_blurred_video_frame(video_path: Path, blur_radius: int = 20):
     except Exception as e:
         return None
 
-def display_media(cluster_id, example_num, images, videos):
+def display_media(cluster_id, example_num, images, videos, label):
     """Display images and videos with blur/reveal toggles"""
     col_left, col_media, col_right = st.columns([1, 2, 1])
     
@@ -326,7 +338,7 @@ def display_media(cluster_id, example_num, images, videos):
                     img_path = img_item
                 
                 image_key = f"{cluster_id}_{example_num}_img_{img_idx}"
-                image_path = Path(f"human_validation_samples/intolerant/cluster_{cluster_id}") / img_path
+                image_path = Path(f"human_validation_samples/{label}/cluster_{cluster_id}") / img_path
                 
                 with cols[img_idx % len(cols)]:
                     if image_path.exists():
@@ -358,7 +370,7 @@ def display_media(cluster_id, example_num, images, videos):
                 else:
                     video_path_str = videos[0]
                 
-                video_path = Path(f"human_validation_samples/intolerant/cluster_{cluster_id}") / video_path_str
+                video_path = Path(f"human_validation_samples/{label}/cluster_{cluster_id}") / video_path_str
                 video_key = f"{cluster_id}_{example_num}_vid_0"
                 
                 if video_path.exists():
@@ -394,7 +406,7 @@ def display_media(cluster_id, example_num, images, videos):
                     else:
                         video_path_str = vid_item
                     
-                    video_path = Path(f"human_validation_samples/intolerant/cluster_{cluster_id}") / video_path_str
+                    video_path = Path(f"human_validation_samples/{label}/cluster_{cluster_id}") / video_path_str
                     video_key = f"{cluster_id}_{example_num}_vid_{vid_idx}"
                     
                     with cols[vid_idx % len(cols)]:
@@ -442,19 +454,32 @@ def show_login_page():
             key="login_user_name_input"
         )
         
+        # Get available labels
+        available_labels = get_available_labels()
+        if not available_labels:
+            st.error("❌ No label categories found in human_validation_samples/")
+            return
+        
+        selected_label = st.selectbox(
+            "Select a label category:",
+            available_labels,
+            key="login_label_select"
+        )
+        
         col_a, col_b = st.columns(2)
         with col_a:
             if st.button("✅ Continue", use_container_width=True):
                 if user_name and len(user_name.strip()) > 0:
                     st.session_state.user_name = user_name.strip()
+                    st.session_state.selected_label = selected_label
                     
                     # Check if this is admin user
                     if st.session_state.user_name.lower() == "admin":
                         st.session_state.annotations = {}  # Admin should not have annotations
                         st.session_state.app_page = "admin"
                     else:
-                        # Load this user's annotations from their file
-                        st.session_state.annotations = load_user_annotations(st.session_state.user_name)
+                        # Load this user's annotations from their file for the selected label
+                        st.session_state.annotations = load_user_annotations(st.session_state.user_name, st.session_state.selected_label)
                         st.session_state.current_cluster_idx = 0
                         st.session_state.app_page = "dashboard"
                     
@@ -480,7 +505,7 @@ def show_dashboard_page():
     # Ensure annotations are loaded for current user
     if st.session_state.user_name:
         if not st.session_state.annotations:
-            st.session_state.annotations = load_user_annotations(st.session_state.user_name)
+            st.session_state.annotations = load_user_annotations(st.session_state.user_name, st.session_state.selected_label)
     
     clusters = st.session_state.clusters
     annotations = st.session_state.annotations
@@ -561,7 +586,7 @@ def show_dashboard_page():
         with col1:
             if st.button("🗑️ Clear My Annotations", use_container_width=True, key="clear_my_data"):
                 # Clear current user's annotations
-                user_file = get_user_annotation_file(st.session_state.user_name)
+                user_file = get_user_annotation_file(st.session_state.user_name, st.session_state.selected_label)
                 if user_file.exists():
                     os.remove(user_file)
                 st.session_state.annotations = {}
@@ -580,8 +605,8 @@ def show_dashboard_page():
 
                     if SESSION_DIR.exists():
                         shutil.rmtree(SESSION_DIR)
-                    # Clear all annotation files
-                    anno_dir = Path("human_validation_samples/intolerant")
+                    # Clear all annotation files for current label
+                    anno_dir = Path(f"human_validation_samples/{st.session_state.selected_label}")
                     if anno_dir.exists():
                         for f in anno_dir.glob("annotations_*.json"):
                             os.remove(f)
@@ -603,10 +628,11 @@ def show_admin_page():
     """Show admin panel with all users' annotations"""
     st.title("👨‍💼 Admin Panel")
     st.markdown(f"**Logged in as:** admin | [Logout](javascript:void(0))")
+    st.markdown(f"**Current Label:** {st.session_state.selected_label}")
     st.divider()
     
     # Get all users' data
-    all_users = get_all_users_annotations()
+    all_users = get_all_users_annotations(st.session_state.selected_label)
     
     if not all_users:
         st.info("No annotations found yet")
@@ -677,7 +703,7 @@ def show_admin_page():
                 
                 with col_conf1:
                     if st.button(f"✅ YES, Delete {user_name}'s Data", use_container_width=True, key=f"confirm_del_{user_name}"):
-                        if delete_user_annotations(user_name):
+                        if delete_user_annotations(user_name, st.session_state.selected_label):
                             st.session_state[f"confirm_delete_{user_name}"] = False
                             st.success(f"✅ Deleted all annotations for {user_name}")
                             st.rerun()
@@ -726,7 +752,7 @@ def show_admin_page():
         
         with col_conf1:
             if st.button("✅ YES, DELETE EVERYTHING", use_container_width=True, key="confirm_delete_all_btn"):
-                if delete_all_annotations():
+                if delete_all_annotations(st.session_state.selected_label):
                     st.session_state["confirm_delete_all"] = False
                     st.success("✅ All annotations deleted!")
                     st.rerun()
@@ -740,6 +766,9 @@ def show_admin_page():
 
 def show_summary_page():
     """Show evaluation summary and statistics"""
+    # Reload annotations for current user to get latest state
+    st.session_state.annotations = load_user_annotations(st.session_state.user_name, st.session_state.selected_label)
+    
     clusters = st.session_state.clusters
     annotations = st.session_state.annotations
     
@@ -825,11 +854,11 @@ def show_evaluation_page():
     clusters = st.session_state.clusters
     
     if not clusters:
-        st.error("❌ No clusters found. Check human_validation_samples/intolerant/")
+        st.error(f"❌ No clusters found. Check human_validation_samples/{st.session_state.selected_label}/")
         st.stop()
     
     if not st.session_state.annotations:
-        st.session_state.annotations = load_user_annotations(st.session_state.user_name)
+        st.session_state.annotations = load_user_annotations(st.session_state.user_name, st.session_state.selected_label)
     
     # Sidebar navigation
     with st.sidebar:
@@ -938,7 +967,7 @@ def show_evaluation_page():
                         
                         # Display media
                         if images or videos:
-                            display_media(cluster_id, i, images, videos)
+                            display_media(cluster_id, i, images, videos, st.session_state.selected_label)
                             st.divider()
                     
                     # Display text
@@ -1190,7 +1219,7 @@ def show_evaluation_page():
 
     with col1:
         if st.button("💾 Save Progress", use_container_width=True):
-            if save_user_annotations(st.session_state.user_name, st.session_state.annotations):
+            if save_user_annotations(st.session_state.user_name, st.session_state.selected_label, st.session_state.annotations):
                 save_session_state()
                 st.success("✅ Progress saved!")
             else:
@@ -1199,7 +1228,7 @@ def show_evaluation_page():
     with col2:
         if st.button("⬆️ Auto-save", use_container_width=True):
             if st.session_state.auto_save_enabled:
-                if save_user_annotations(st.session_state.user_name, st.session_state.annotations):
+                if save_user_annotations(st.session_state.user_name, st.session_state.selected_label, st.session_state.annotations):
                     save_session_state()
                     st.toast("Auto-saved!")
 
@@ -1221,23 +1250,24 @@ def show_evaluation_page():
 
 # Load clusters
 if not st.session_state.clusters:
-    clusters_data = load_clusters_from_validation_data()
-    if clusters_data:
-        st.session_state.clusters = clusters_data
-    else:
-        # No clusters found - try to download from Google Drive if folder ID in secrets
-        try:
-            google_folder_id = st.secrets.get("GOOGLE_DRIVE_FOLDER_ID")
-            if google_folder_id:
-                with st.spinner("📥 Downloading cluster data from Google Drive..."):
-                    if download_from_google_drive(google_folder_id):
-                        # Reload clusters after download
-                        clusters_data = load_clusters_from_validation_data()
-                        if clusters_data:
-                            st.session_state.clusters = clusters_data
-                        st.success("✅ Clusters downloaded and loaded!")
-        except Exception as e:
-            pass  # Secrets not available or download failed
+    if st.session_state.selected_label:
+        clusters_data = load_clusters_from_validation_data(st.session_state.selected_label)
+        if clusters_data:
+            st.session_state.clusters = clusters_data
+        else:
+            # No clusters found - try to download from Google Drive if folder ID in secrets
+            try:
+                google_folder_id = st.secrets.get("GOOGLE_DRIVE_FOLDER_ID")
+                if google_folder_id:
+                    with st.spinner("📥 Downloading cluster data from Google Drive..."):
+                        if download_from_google_drive(google_folder_id):
+                            # Reload clusters after download
+                            clusters_data = load_clusters_from_validation_data(st.session_state.selected_label)
+                            if clusters_data:
+                                st.session_state.clusters = clusters_data
+                            st.success("✅ Clusters downloaded and loaded!")
+            except Exception as e:
+                pass  # Secrets not available or download failed
 
 # If clusters still missing, show error
 if not st.session_state.clusters and st.session_state.app_page != "login":
@@ -1249,7 +1279,7 @@ if not st.session_state.clusters and st.session_state.app_page != "login":
     
     **To fix:**
     1. Check that Google Drive folder ID is set in secrets: `GOOGLE_DRIVE_FOLDER_ID`
-    2. Verify the folder has the correct structure: `human_validation_samples/intolerant/`
+    2. Verify the folder has the correct structure: `human_validation_samples/{selected_label}/`
     3. Restart the app
     """)
     st.stop()
@@ -1273,5 +1303,5 @@ else:
 
 # Auto-save functionality (but not for admin user)
 if st.session_state.user_name and st.session_state.user_name.lower() != "admin" and st.session_state.auto_save_enabled and st.session_state.annotations:
-    save_user_annotations(st.session_state.user_name, st.session_state.annotations)
+    save_user_annotations(st.session_state.user_name, st.session_state.selected_label, st.session_state.annotations)
     save_session_state()
