@@ -245,32 +245,25 @@ def download_and_extract_nextcloud(zip_url, extract_path="human_validation_sampl
         if not zip_url.endswith("/download"):
             zip_url = zip_url.rstrip("/") + "/download"
         
-        st.info(f"🔗 Using URL: {zip_url[:50]}...")
-        
         with st.spinner("📥 Downloading cluster data from Nextcloud..."):
             response = requests.get(zip_url, timeout=60)
             response.raise_for_status()
-            st.success(f"✅ Downloaded {len(response.content) / (1024*1024):.1f} MB")
             
             # Extract zip file
             extract_path.mkdir(parents=True, exist_ok=True)
             with zipfile.ZipFile(io.BytesIO(response.content)) as zip_ref:
                 zip_ref.extractall(extract_path)
-            st.success(f"✅ Extracted to {extract_path}")
         
         # Handle nested folder structure (if zip had a single parent folder)
         items = list(extract_path.iterdir())
-        st.info(f"📁 Items in extract_path: {[item.name for item in items]}")
         non_annotation_items = [item for item in items if not item.name.startswith("annotations_")]
         
         if len(non_annotation_items) == 1 and non_annotation_items[0].is_dir():
             nested_dir = non_annotation_items[0]
             nested_items = list(nested_dir.iterdir())
-            st.info(f"📁 Items in nested_dir: {[item.name for item in nested_items]}")
             
             # If the nested folder contains label directories, move them up
             if nested_items and any((nested_dir / item.name / "metadata.json").exists() for item in nested_items if (nested_dir / item.name).is_dir()):
-                st.info("🔄 Moving nested items to parent...")
                 for item in nested_items:
                     src = nested_dir / item.name
                     dst = extract_path / item.name
@@ -279,14 +272,10 @@ def download_and_extract_nextcloud(zip_url, extract_path="human_validation_sampl
                     src.rename(dst)
                 nested_dir.rmdir()
         
-        # Verify extraction
-        metadata_files = list(extract_path.glob("*/metadata.json"))
-        st.success(f"✅ Data downloaded and extracted successfully! Found {len(metadata_files)} metadata files")
-        return len(metadata_files) > 0
+        st.success("✅ Data downloaded and extracted successfully!")
+        return True
     except Exception as e:
         st.error(f"❌ Error downloading data: {str(e)}")
-        import traceback
-        st.error(f"Debug: {traceback.format_exc()}")
         return False
 
 def load_clusters_from_validation_data():
@@ -294,31 +283,23 @@ def load_clusters_from_validation_data():
     base_path = Path("human_validation_samples")
     
     if not base_path.exists():
-        st.warning(f"❌ Base path doesn't exist: {base_path}")
         return None
     
     clusters_list = []
     label_dirs = [item for item in base_path.iterdir() if item.is_dir() and not item.name.startswith(".") and not item.name.startswith("annotations_")]
-    
-    st.info(f"📁 Found {len(label_dirs)} label directories: {[d.name for d in label_dirs]}")
     
     # Iterate through all label directories
     for label_dir in sorted(label_dirs):
         label_name = label_dir.name
         metadata_path = label_dir / "metadata.json"
         
-        st.info(f"🔍 Checking {label_name}... metadata at: {metadata_path}")
-        
         if not metadata_path.exists():
-            st.warning(f"⚠️ No metadata.json in {label_name}")
             continue
         
         try:
             with open(metadata_path, "r") as f:
                 metadata = json.load(f)
-            st.success(f"✅ Loaded metadata for {label_name}")
         except Exception as e:
-            st.error(f"❌ Error loading {label_name}: {e}")
             continue
         
         for cluster_str_id, cluster_info in sorted(metadata.get("clusters", {}).items()):
@@ -328,7 +309,6 @@ def load_clusters_from_validation_data():
                 samples_file = cluster_dir / "samples.jsonl"
                 
                 if not samples_file.exists():
-                    st.warning(f"⚠️ No samples.jsonl for {label_name}/cluster_{cluster_id}")
                     continue
                 
                 examples = []
@@ -353,17 +333,8 @@ def load_clusters_from_validation_data():
                 }
                 
                 clusters_list.append(cluster_obj)
-                st.caption(f"✅ Loaded {unique_cid} ({len(examples)} examples)")
             except Exception as e:
-                st.error(f"❌ Error loading cluster {cluster_str_id}: {e}")
-                import traceback
-                st.error(traceback.format_exc())
                 continue
-    
-    if clusters_list:
-        st.success(f"🎉 Successfully loaded {len(clusters_list)} clusters!")
-    else:
-        st.error("❌ No clusters loaded")
     
     return clusters_list if clusters_list else None
 
@@ -1305,41 +1276,26 @@ def show_evaluation_page():
 if not st.session_state.clusters and not st.session_state.clusters_loaded_attempted:
     st.session_state.clusters_loaded_attempted = True
     
-    with st.spinner("Loading cluster data..."):
-        clusters_data = load_clusters_from_validation_data()
-        if clusters_data:
-            st.session_state.clusters = clusters_data
-        else:
-            # No clusters found locally - try to download from Nextcloud
-            nextcloud_url = st.secrets.get("sharecloudlink")
-            if nextcloud_url:
-                st.info("📥 Downloading cluster data from Nextcloud...")
-                if download_and_extract_nextcloud(nextcloud_url):
-                    # Reload clusters after download
-                    clusters_data = load_clusters_from_validation_data()
-                    if clusters_data:
-                        st.session_state.clusters = clusters_data
-                    else:
-                        st.error("❌ Data downloaded but no metadata.json found")
-            else:
-                st.warning("⚠️ No sharecloudlink secret configured")
+    clusters_data = load_clusters_from_validation_data()
+    if clusters_data:
+        st.session_state.clusters = clusters_data
+    else:
+        # No clusters found locally - try to download from Nextcloud
+        nextcloud_url = st.secrets.get("sharecloudlink")
+        if nextcloud_url:
+            if download_and_extract_nextcloud(nextcloud_url):
+                # Reload clusters after download
+                clusters_data = load_clusters_from_validation_data()
+                if clusters_data:
+                    st.session_state.clusters = clusters_data
 
 # If clusters still missing, show error
 if not st.session_state.clusters and st.session_state.app_page != "login":
     st.title("🏷️ Cluster Label Validator")
     st.divider()
     st.error("❌ No cluster data available!")
-    
-    base_path = Path("human_validation_samples")
-    has_local_data = base_path.exists()
-    has_secret = bool(st.secrets.get("sharecloudlink"))
-    
-    st.markdown(f"""
+    st.markdown("""
     **Problem:** Cluster validation data could not be found or downloaded.
-    
-    **Current Status:**
-    - 📁 Local data exists: {has_local_data}
-    - 🔑 Nextcloud secret configured: {has_secret}
     
     **To fix (on Streamlit Cloud):**
     1. Get your Nextcloud share URL (the folder containing all label categories)
@@ -1351,7 +1307,7 @@ if not st.session_state.clusters and st.session_state.app_page != "login":
     4. Restart the app
     
     **To fix (locally):**
-    1. Extract/prepare the `human_validation_samples/` directory
+    1. Ensure the `human_validation_samples/` directory exists
     2. Run: `streamlit run streamlit_app.py`
     """)
     st.stop()
