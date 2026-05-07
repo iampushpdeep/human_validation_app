@@ -371,12 +371,152 @@ git push origin main
 
 ---
 
-## Next Checklist
+## Google Sheets Backend Setup (NEW: Autosave + Resume)
+
+The app now supports Google Sheets for persistent annotation storage with automatic saving and resume functionality. This replaces the local JSON-per-user approach.
+
+### What's New?
+
+✨ **Autosave**: Annotations automatically save to Google Sheets after each rating  
+✨ **Resume**: Return to the app and continue where you left off  
+✨ **Retry Logic**: Automatic retry on network failures (3 attempts with backoff)  
+✨ **Auditability**: All annotations stored in a shared Google Sheet (easier for exports)
+
+### Setup Instructions
+
+#### 1. Create Google Sheet
+
+1. Go to [sheets.google.com](https://sheets.google.com)
+2. Click **"+ Blank spreadsheet"**
+3. Rename to: `cluster_validator_annotations`
+4. Add column headers in **Row 1**:
+   ```
+   A: user_name
+   B: cluster_cid
+   C: appropriateness_rating
+   D: follow_up_answers
+   E: suggested_name
+   F: notes
+   G: timestamp
+   ```
+
+#### 2. Set Up Google Apps Script
+
+1. In your Google Sheet, go to **Extensions** → **Apps Script**
+2. Delete default code, replace with code from `GOOGLE_APPS_SCRIPT_TEMPLATE.gs` (in this repo)
+3. Save the script (Ctrl+S or Cmd+S)
+4. Click **"Deploy"** → **"New deployment"**
+   - Type: Select **"Web app"**
+   - Execute as: **Your account**
+   - Who has access: **"Anyone"**
+5. Click **"Deploy"** and copy the deployment URL
+   - It looks like: `https://script.google.com/macros/d/{DEPLOYMENT_ID}/usercurrent/do?userAccessType=ANYONE`
+
+#### 3. Configure Secrets
+
+**Locally (for testing):**
+1. Create or edit `.streamlit/secrets.toml`
+2. Add:
+   ```toml
+   GOOGLE_APPS_SCRIPT_URL = "https://script.google.com/macros/d/{DEPLOYMENT_ID}/usercurrent/do?userAccessType=ANYONE"
+   GOOGLE_SHEET_READ_URL = "https://script.google.com/macros/d/{DEPLOYMENT_ID}/usercurrent/do?userAccessType=ANYONE"
+   ```
+3. Replace `{DEPLOYMENT_ID}` with your deployment ID from step 2
+4. Save and test: `streamlit run streamlit_app.py`
+
+**On Streamlit Cloud:**
+1. Go to your deployed app
+2. Click hamburger (☰) → **Settings** → **Secrets**
+3. Paste the same secrets as above
+4. Click **"Save"** - app auto-redeploys
+
+#### 4. Test the Setup
+
+1. **Locally**: `streamlit run streamlit_app.py`
+2. Log in with a test user
+3. Rate one cluster
+4. ✅ Check your Google Sheet - should see one new row with the annotation
+5. Refresh the app and log in again - should show **"✅ Resumed — 1 annotation already saved"**
+6. Click a different cluster - should skip the previously-rated one
+
+### Troubleshooting Google Sheets Setup
+
+#### ❌ "GOOGLE_APPS_SCRIPT_URL not configured in secrets"
+
+**Problem:** Secrets not set up correctly
+
+**Fix:**
+- Locally: Check `.streamlit/secrets.toml` exists and has the URL
+- Streamlit Cloud: Go to Settings → Secrets and verify the URL is there
+- Restart the app
+
+#### ❌ "Save failed (retried multiple times)"
+
+**Problem:** Google Apps Script endpoint not responding
+
+**Check:**
+1. Is the deployment URL correct? (You copied it from Apps Script?)
+2. Is the Apps Script deployed as "Web app" with "Anyone" access?
+3. Try accessing the URL directly in browser - should show script error (that's OK)
+
+**Fix:**
+1. Redeploy the Apps Script (Deploy → New deployment)
+2. Copy new URL to secrets
+3. Restart Streamlit
+
+#### ❌ Annotations save to Google Sheets but app doesn't show resume message
+
+**Problem:** Fetch is failing silently
+
+**Check:**
+- Is `GOOGLE_SHEET_READ_URL` set in secrets?
+- Does it have the same deployment URL as `GOOGLE_APPS_SCRIPT_URL`?
+
+**Fix:**
+1. Add `GOOGLE_SHEET_READ_URL` to secrets if missing
+2. Test manually by accessing the URL with `?user_name=testuser` query param
+
+#### ❌ Multiple deployments of same Apps Script
+
+**Problem:** You deployed multiple times and lost track of the URL
+
+**Fix:**
+1. Go to your Google Sheet
+2. Extensions → Apps Script
+3. Click the clock icon (Deployments)
+4. You should see all deployments
+5. Use the most recent one (or delete old ones)
+
+### Migrating from Local JSON to Google Sheets
+
+If you already have annotations saved in local `annotations_*.json` files:
+
+1. Manually export data from JSON files
+2. In Google Sheet, create rows with the data:
+   - Column A: user_name
+   - Column B: cluster_cid (e.g., "intolerant_cluster_5")
+   - Column C: appropriateness_rating
+   - etc.
+3. Once data is in Google Sheet, the app will auto-resume from it
+
+Alternatively, keep local files as backup and gradually transition to Google Sheets.
+
+### Data Privacy & Security
+
+- **Google Sheet is visible to**: Anyone with the sheet link (keep it private!)
+- **Annotations are queried by**: User name only (no authentication on script level)
+- **Recommended**: Share Google Sheet only with team leads/admins, not with annotators
+- **Future enhancement**: Add row-level permissions or API authentication
+
+---
+
+## Next Checklist (Updated)
 
 - [ ] GitHub repo ready (`git push origin main`)
 - [ ] App deployed to Streamlit Cloud
-- [ ] OIDC secrets configured
+- [ ] OIDC secrets configured (see OIDC_SETUP.md)
+- [ ] **Google Sheets setup complete** (see above)
 - [ ] Login button working
-- [ ] Test user can save annotations
-- [ ] Test second user gets separate file
+- [ ] Test user can save annotations → appear in Google Sheet
+- [ ] Test resume: log in again → see "✅ Resumed" message
 - [ ] Share link with team

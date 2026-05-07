@@ -11,6 +11,9 @@ from pathlib import Path
 from datetime import datetime
 from PIL import Image, ImageFilter
 
+# Import Google Sheets utilities
+from sheets_utils import append_to_sheet, fetch_saved_progress, get_user_annotation_count
+
 # Optional imports
 try:
     import cv2
@@ -92,6 +95,12 @@ if "export_count" not in st.session_state:
     st.session_state.export_count = 0
 if "clusters_loaded_attempted" not in st.session_state:
     st.session_state.clusters_loaded_attempted = False
+if "rating_clear_counter" not in st.session_state:
+    st.session_state.rating_clear_counter = {}
+if "_do_autosave" not in st.session_state:
+    st.session_state._do_autosave = False
+if "saved_annotation_ids" not in st.session_state:
+    st.session_state.saved_annotation_ids = set()
 
 # ============================================================================
 # UTILITY FUNCTIONS
@@ -501,9 +510,33 @@ def show_login_page():
                         st.session_state.annotations = {}  # Admin should not have annotations
                         st.session_state.app_page = "admin"
                     else:
-                        # Load this user's annotations from consolidated file
-                        st.session_state.annotations = load_user_annotations(st.session_state.user_name)
-                        st.session_state.current_cluster_idx = 0
+                        # Try to load saved progress from Google Sheets first
+                        saved_annotations = fetch_saved_progress(st.session_state.user_name)
+                        
+                        if saved_annotations:
+                            # Resume: Load saved annotations and show message
+                            st.session_state.annotations = saved_annotations
+                            st.session_state.saved_annotation_ids = set(saved_annotations.keys())
+                            # Find first unannotated cluster to resume from
+                            clusters = st.session_state.clusters or []
+                            if clusters:
+                                for idx, cluster in enumerate(clusters):
+                                    cid = cluster.get("cid", f"cluster_{idx}")
+                                    if cid not in saved_annotations:
+                                        st.session_state.current_cluster_idx = idx
+                                        break
+                                else:
+                                    # All clusters are annotated
+                                    st.session_state.current_cluster_idx = 0
+                            
+                            # Show resume message
+                            resume_count = len(saved_annotations)
+                            st.success(f"✅ Resumed — {resume_count} annotations already saved. Continuing from cluster {st.session_state.current_cluster_idx + 1}.")
+                        else:
+                            # Fresh start: Load from local file as fallback (legacy support)
+                            st.session_state.annotations = load_user_annotations(st.session_state.user_name)
+                            st.session_state.current_cluster_idx = 0
+                        
                         st.session_state.app_page = "dashboard"
                     
                     save_session_state()
@@ -528,7 +561,10 @@ def show_dashboard_page():
     # Ensure annotations are loaded for current user
     if st.session_state.user_name:
         if not st.session_state.annotations:
-            st.session_state.annotations = load_user_annotations(st.session_state.user_name)
+            # Try Google Sheets first, then fallback to local
+            saved_annotations = fetch_saved_progress(st.session_state.user_name)
+            st.session_state.annotations = saved_annotations if saved_annotations else load_user_annotations(st.session_state.user_name)
+            st.session_state.saved_annotation_ids = set(saved_annotations.keys()) if saved_annotations else set()
     
     clusters = st.session_state.clusters
     annotations = st.session_state.annotations
@@ -579,6 +615,7 @@ def show_dashboard_page():
             st.session_state.annotations = {}
             st.session_state.current_cluster_idx = 0
             st.session_state.app_page = "login"
+            st.session_state.saved_annotation_ids = set()
             # Clear the session file
             session_file = get_session_file()
             if session_file.exists():
@@ -587,13 +624,16 @@ def show_dashboard_page():
     
     st.divider()
     
-    # Session info
+    # Session info with Google Sheets status
     st.markdown("**Session Information:**")
     col1, col2 = st.columns(2)
     with col1:
         st.caption(f"👤 User: {st.session_state.user_name}")
     with col2:
-        if st.session_state.last_saved != "Never":
+        saved_count = len(st.session_state.saved_annotation_ids)
+        if saved_count > 0:
+            st.caption(f"☁️ Saved to Google Sheets: {saved_count} annotations")
+        elif st.session_state.last_saved != "Never":
             st.caption(f"⏱️ Last saved: {st.session_state.last_saved}")
         else:
             st.caption("Not saved yet")
@@ -880,7 +920,10 @@ def show_evaluation_page():
         st.stop()
     
     if not st.session_state.annotations:
-        st.session_state.annotations = load_user_annotations(st.session_state.user_name)
+        # Try Google Sheets first, then fallback to local
+        saved_annotations = fetch_saved_progress(st.session_state.user_name)
+        st.session_state.annotations = saved_annotations if saved_annotations else load_user_annotations(st.session_state.user_name)
+        st.session_state.saved_annotation_ids = set(saved_annotations.keys()) if saved_annotations else set()
     
     # Sidebar navigation
     with st.sidebar:
@@ -1096,6 +1139,7 @@ def show_evaluation_page():
     # Instantly update on selection
     if selected is not None:
         ann["appropriateness_rating"] = selected
+        st.session_state._do_autosave = True  # Trigger autosave on next render
         save_session_state()
 
     score = ann["appropriateness_rating"]
@@ -1329,7 +1373,26 @@ elif st.session_state.app_page == "summary":
 else:
     show_login_page()
 
-# Auto-save functionality (but not for admin user)
-if st.session_state.user_name and st.session_state.user_name.lower() != "admin" and st.session_state.auto_save_enabled and st.session_state.annotations:
-    save_user_annotations(st.session_state.user_name, st.session_state.annotations)
+# Auto-save functionality with Google Sheets integration (but not for admin user)
+if st.session_state.user_name and st.session_state.user_name.lower() != "admin" and st.session_state._do_autosave and st.session_state.annotations:
+    # Find newly completed annotations that haven't been saved yet
+    for cluster_cid, annotation in st.session_state.annotations.items():
+        # Only save if rating is set (completed annotation)
+        if annotation.get("appropriateness_rating") is not None:
+            if cluster_cid not in st.session_state.saved_annotation_ids:
+                # Send to Google Sheets via Apps Script
+                success, message = append_to_sheet(
+                    st.session_state.user_name,
+                    cluster_cid,
+                    annotation
+                )
+                
+                if success:
+                    st.session_state.saved_annotation_ids.add(cluster_cid)
+                    st.toast(f"✅ Progress saved ({len(st.session_state.saved_annotation_ids)}/{len([a for a in st.session_state.annotations.values() if a.get('appropriateness_rating') is not None])} annotations)")
+                else:
+                    st.toast(message, icon="⚠️")
+    
+    # Clear autosave flag after processing
+    st.session_state._do_autosave = False
     save_session_state()

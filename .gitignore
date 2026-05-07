@@ -2,3 +2,9 @@ human_validation_samples/
 .streamlit/secrets.toml
 .streamlit/user_data/
 *.db
+__pycache__/
+.session_data/
+*.zip
+*.pyc
+.DS_Store
+.env
