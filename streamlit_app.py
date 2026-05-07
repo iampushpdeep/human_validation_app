@@ -13,6 +13,17 @@ from PIL import Image, ImageFilter
 
 # Import Google Sheets utilities
 from sheets_utils import append_to_sheet, fetch_saved_progress, get_user_annotation_count
+import time
+
+# Cached blur function for performance
+@st.cache_data
+def blur_image(image_path_str):
+    """Cache blurred images to avoid recomputing on every render."""
+    try:
+        img = Image.open(image_path_str)
+        return img.filter(ImageFilter.GaussianBlur(radius=20))
+    except:
+        return None
 
 # Optional imports
 try:
@@ -108,9 +119,13 @@ if "saved_annotation_ids" not in st.session_state:
 
 def sync_with_sheets():
     """
-    Sync with Google Sheets on every app reload if user is logged in.
-    This ensures the interface reflects completed annotations from Sheets.
+    Sync with Google Sheets on first app load for logged-in user.
+    Only runs once per user session to avoid repeated HTTP calls.
     """
+    # Only sync once per user session to avoid repeated HTTP calls
+    if "_synced_with_sheets" in st.session_state:
+        return
+    
     if st.session_state.user_name and st.session_state.user_name.lower() != "admin":
         try:
             # Fetch saved progress from Google Sheets
@@ -135,6 +150,9 @@ def sync_with_sheets():
             # Log error for debugging
             import traceback
             pass
+    
+    # Mark as synced so we don't repeat this on every rerun
+    st.session_state._synced_with_sheets = True
 
 # Run sync on app startup if user is logged in
 sync_with_sheets()
@@ -367,14 +385,13 @@ def display_media(cluster_id, example_num, images, videos, label_category):
                                 if st.button("🔒 Blur", key=f"blur_{image_key}", use_container_width=True):
                                     st.session_state.unblurred_images.discard(image_key)
                                     save_session_state()
-                                    st.rerun()
                             else:
-                                blurred_img = img.filter(ImageFilter.GaussianBlur(radius=20))
-                                st.image(blurred_img, use_container_width=True)
+                                blurred_img = blur_image(str(image_path))
+                                if blurred_img:
+                                    st.image(blurred_img, use_container_width=True)
                                 if st.button("👁️ Reveal", key=f"unblur_{image_key}", use_container_width=True):
                                     st.session_state.unblurred_images.add(image_key)
                                     save_session_state()
-                                    st.rerun()
                         except Exception as e:
                             st.caption(f"Could not load image")
                     else:
@@ -400,7 +417,6 @@ def display_media(cluster_id, example_num, images, videos, label_category):
                                 if st.button("🔒 Blur", key=f"blur_vid_{video_key}", use_container_width=True):
                                     st.session_state.unblurred_images.discard(video_key)
                                     save_session_state()
-                                    st.rerun()
                             else:
                                 blurred_frame = get_blurred_video_frame(video_path)
                                 if blurred_frame:
@@ -410,7 +426,6 @@ def display_media(cluster_id, example_num, images, videos, label_category):
                                 if st.button("👁️ Reveal Video", key=f"reveal_vid_{video_key}", use_container_width=True):
                                     st.session_state.unblurred_images.add(video_key)
                                     save_session_state()
-                                    st.rerun()
                     except Exception as e:
                         pass
                 else:
@@ -437,7 +452,6 @@ def display_media(cluster_id, example_num, images, videos, label_category):
                                         if st.button("🔒", key=f"blur_vid_{video_key}", use_container_width=True):
                                             st.session_state.unblurred_images.discard(video_key)
                                             save_session_state()
-                                            st.rerun()
                                     else:
                                         blurred_frame = get_blurred_video_frame(video_path)
                                         if blurred_frame:
@@ -447,7 +461,6 @@ def display_media(cluster_id, example_num, images, videos, label_category):
                                         if st.button("👁️", key=f"reveal_vid_{video_key}", use_container_width=True):
                                             st.session_state.unblurred_images.add(video_key)
                                             save_session_state()
-                                            st.rerun()
                             except Exception as e:
                                 pass
                         else:
@@ -1102,33 +1115,40 @@ else:
 
 # Auto-save functionality with Google Sheets integration (but not for admin user)
 if st.session_state.user_name and st.session_state.user_name.lower() != "admin" and st.session_state._do_autosave and st.session_state.annotations:
-    # Track last saved state to detect changes
-    if "_last_saved_annotations" not in st.session_state:
-        st.session_state._last_saved_annotations = {}
+    # Throttle autosave - only save if enough time has passed
+    current_time = time.time()
+    last_autosave = st.session_state.get("_last_autosave_time", 0)
     
-    # Find annotations that need to be saved (new or changed)
-    for cluster_cid, annotation in st.session_state.annotations.items():
-        # Only save if rating is set (completed annotation)
-        if annotation.get("appropriateness_rating") is not None:
-            # Check if this is a new annotation or if it has changed
-            last_saved = st.session_state._last_saved_annotations.get(cluster_cid, {})
-            has_changed = last_saved != annotation
-            
-            if has_changed:
-                # Send to Google Sheets via Apps Script (will create new row even if cluster_cid exists)
-                success, message = append_to_sheet(
-                    st.session_state.user_name,
-                    cluster_cid,
-                    annotation
-                )
+    # Only autosave every 3 seconds minimum to avoid excessive API calls
+    if current_time - last_autosave > 3:
+        # Track last saved state to detect changes
+        if "_last_saved_annotations" not in st.session_state:
+            st.session_state._last_saved_annotations = {}
+        
+        # Find annotations that need to be saved (new or changed)
+        for cluster_cid, annotation in st.session_state.annotations.items():
+            # Only save if rating is set (completed annotation)
+            if annotation.get("appropriateness_rating") is not None:
+                # Check if this is a new annotation or if it has changed
+                last_saved = st.session_state._last_saved_annotations.get(cluster_cid, {})
+                has_changed = last_saved != annotation
                 
-                if success:
-                    st.session_state.saved_annotation_ids.add(cluster_cid)
-                    st.session_state._last_saved_annotations[cluster_cid] = annotation.copy()
-                    st.toast(f"✅ Progress saved ({len(st.session_state.saved_annotation_ids)}/{len([a for a in st.session_state.annotations.values() if a.get('appropriateness_rating') is not None])} annotations)")
-                else:
-                    st.toast(message, icon="⚠️")
-    
-    # Clear autosave flag after processing
-    st.session_state._do_autosave = False
-    save_session_state()
+                if has_changed:
+                    # Send to Google Sheets via Apps Script (will create new row even if cluster_cid exists)
+                    success, message = append_to_sheet(
+                        st.session_state.user_name,
+                        cluster_cid,
+                        annotation
+                    )
+                    
+                    if success:
+                        st.session_state.saved_annotation_ids.add(cluster_cid)
+                        st.session_state._last_saved_annotations[cluster_cid] = annotation.copy()
+                        st.toast(f"✅ Progress saved ({len(st.session_state.saved_annotation_ids)}/{len([a for a in st.session_state.annotations.values() if a.get('appropriateness_rating') is not None])} annotations)")
+                    else:
+                        st.toast(message, icon="⚠️")
+        
+        # Clear autosave flag after processing and update throttle timer
+        st.session_state._do_autosave = False
+        st.session_state._last_autosave_time = current_time
+        save_session_state()
