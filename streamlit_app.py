@@ -133,8 +133,13 @@ def sync_with_sheets():
     Sync with Google Sheets on first app load for logged-in user.
     Only runs once per user session to avoid repeated HTTP calls.
     """
-    # Only sync once per user session to avoid repeated HTTP calls
-    if "_synced_with_sheets" in st.session_state:
+    # Track which user was last synced to detect user changes
+    current_synced_user = st.session_state.get("_synced_with_user")
+    current_user = st.session_state.user_name
+    
+    # If the user changed, we need to re-sync even if we synced before
+    if current_synced_user == current_user and "_synced_with_sheets" in st.session_state:
+        # User hasn't changed and we already synced this user
         return
     
     if st.session_state.user_name and st.session_state.user_name.lower() != "admin":
@@ -167,6 +172,9 @@ def sync_with_sheets():
     
     # Mark as synced so we don't repeat this on every rerun
     st.session_state._synced_with_sheets = True
+    
+    # Remember which user we synced for
+    st.session_state._synced_with_user = st.session_state.user_name
     
     # Mark that we just synced - used to prevent autosave on first rerun after sync
     st.session_state._just_synced = True
@@ -562,6 +570,14 @@ def show_login_page():
                             # Resume: Load saved annotations and show message
                             st.session_state.annotations = saved_annotations
                             st.session_state.saved_annotation_ids = set(saved_annotations.keys())
+                            
+                            # IMPORTANT: Initialize _last_saved_annotations so autosave won't resave these
+                            import copy
+                            if "_last_saved_annotations" not in st.session_state:
+                                st.session_state._last_saved_annotations = {}
+                            for cid, annotation in saved_annotations.items():
+                                st.session_state._last_saved_annotations[cid] = copy.deepcopy(annotation)
+                            
                             # Find first unannotated cluster to resume from
                             clusters = st.session_state.clusters or []
                             if clusters:
@@ -583,6 +599,8 @@ def show_login_page():
                             st.session_state.current_cluster_idx = 0
                         
                         st.session_state.app_page = "dashboard"
+                        # Mark that we loaded data during login - skip autosave on first rerun
+                        st.session_state._just_synced = True
                     
                     save_session_state()
                     st.rerun()
@@ -1174,6 +1192,13 @@ else:
 
 # Auto-save functionality with Google Sheets integration (but not for admin user)
 # Skip autosave if we just synced (first rerun after loading from sheets)
+
+# DEBUG: Print autosave state
+debug_autosave_condition = (st.session_state.user_name and st.session_state.user_name.lower() != "admin" and 
+    st.session_state._do_autosave and st.session_state.annotations)
+if debug_autosave_condition:
+    print(f"[AUTOSAVE DEBUG] _do_autosave={st.session_state._do_autosave}, _just_synced={st.session_state._just_synced}, will_run={not st.session_state._just_synced}")
+
 if (st.session_state.user_name and st.session_state.user_name.lower() != "admin" and 
     st.session_state._do_autosave and st.session_state.annotations and 
     not st.session_state._just_synced):
