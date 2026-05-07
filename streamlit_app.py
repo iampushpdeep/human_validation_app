@@ -1129,9 +1129,18 @@ if st.session_state.user_name and st.session_state.user_name.lower() != "admin" 
         for cluster_cid, annotation in st.session_state.annotations.items():
             # Only save if rating is set (completed annotation)
             if annotation.get("appropriateness_rating") is not None:
-                # Check if this is a new annotation or if it has changed
-                last_saved = st.session_state._last_saved_annotations.get(cluster_cid, {})
-                has_changed = last_saved != annotation
+                # Ensure this annotation has a baseline for comparison
+                if cluster_cid not in st.session_state._last_saved_annotations:
+                    # First time seeing this annotation - add it as baseline without saving
+                    import copy
+                    st.session_state._last_saved_annotations[cluster_cid] = copy.deepcopy(annotation)
+                    continue  # Skip saving on first encounter, just establish baseline
+                
+                # Check if this annotation has actually changed since last save
+                import copy
+                last_saved = st.session_state._last_saved_annotations[cluster_cid]
+                # Use deepcopy for comparison to handle nested dicts
+                has_changed = copy.deepcopy(last_saved) != copy.deepcopy(annotation)
                 
                 if has_changed:
                     # Send to Google Sheets via Apps Script (will create new row even if cluster_cid exists)
@@ -1143,7 +1152,7 @@ if st.session_state.user_name and st.session_state.user_name.lower() != "admin" 
                     
                     if success:
                         st.session_state.saved_annotation_ids.add(cluster_cid)
-                        st.session_state._last_saved_annotations[cluster_cid] = annotation.copy()
+                        st.session_state._last_saved_annotations[cluster_cid] = copy.deepcopy(annotation)
                         st.toast(f"✅ Progress saved ({len(st.session_state.saved_annotation_ids)}/{len([a for a in st.session_state.annotations.values() if a.get('appropriateness_rating') is not None])} annotations)")
                     else:
                         st.toast(message, icon="⚠️")
