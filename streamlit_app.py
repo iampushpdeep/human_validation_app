@@ -124,6 +124,13 @@ def sync_with_sheets():
                         st.session_state.annotations[cid] = annotation
                 
                 st.session_state.saved_annotation_ids = set(saved_annotations.keys())
+                
+                # Initialize _last_saved_annotations with the loaded data so autosave detects changes correctly
+                if "_last_saved_annotations" not in st.session_state:
+                    st.session_state._last_saved_annotations = {}
+                
+                for cid, annotation in saved_annotations.items():
+                    st.session_state._last_saved_annotations[cid] = annotation.copy()
         except Exception as e:
             # Log error for debugging
             import traceback
@@ -847,8 +854,8 @@ def show_evaluation_page():
         label_visibility="collapsed"
     )
     
-    # Instantly update on selection
-    if selected is not None:
+    # Only update and trigger autosave if rating actually changed
+    if selected is not None and selected != ann["appropriateness_rating"]:
         ann["appropriateness_rating"] = selected
         st.session_state._do_autosave = True  # Trigger autosave on next render
         save_session_state()
@@ -901,7 +908,8 @@ def show_evaluation_page():
             index=None  # No default selection
         )
         
-        if selected_issue is not None:
+        # Only update and trigger autosave if selection actually changed
+        if selected_issue is not None and ann["follow_up_answers"].get("main_issue") != selected_issue:
             ann["follow_up_answers"]["main_issue"] = selected_issue
             st.session_state._do_autosave = True
         
@@ -909,7 +917,7 @@ def show_evaluation_page():
         
         if ann["follow_up_answers"].get("main_issue") == "other":
             st.markdown("#### 2️⃣ What's the specific issue with this name?")
-            ann["follow_up_answers"]["missing_element"] = st.text_area(
+            missing_text = st.text_area(
                 "Please describe the issue:",
                 value=ann["follow_up_answers"].get("missing_element", ""),
                 placeholder="E.g., 'Should mention cryptocurrency scams' or 'Too vague about the specific activity'...",
@@ -917,6 +925,13 @@ def show_evaluation_page():
                 key=f"missing_{cluster_cid}_{st.session_state.rating_clear_counter.get(cluster_cid, 0)}",
                 label_visibility="collapsed"
             )
+            
+            # Trigger autosave if missing_element changed
+            if missing_text != ann["follow_up_answers"].get("missing_element", ""):
+                ann["follow_up_answers"]["missing_element"] = missing_text
+                st.session_state._do_autosave = True
+            else:
+                ann["follow_up_answers"]["missing_element"] = missing_text
             
             st.markdown("---")
         
@@ -936,7 +951,12 @@ def show_evaluation_page():
             char_count = len(suggested_text)
             st.caption(f"Characters: {char_count}/90")
         
-        ann["suggested_name"] = suggested_text
+        # Trigger autosave if suggested name changed
+        if suggested_text != ann["suggested_name"]:
+            ann["suggested_name"] = suggested_text
+            st.session_state._do_autosave = True
+        else:
+            ann["suggested_name"] = suggested_text
 
     # ============================================================================
     # IF HIGH SCORE (4-5): Show confirmation or light follow-up
@@ -963,12 +983,17 @@ def show_evaluation_page():
                 char_count = len(suggested_text)
                 st.caption(f"Characters: {char_count}/90")
             
-            ann["suggested_name"] = suggested_text
+            # Trigger autosave if suggested name changed
+            if suggested_text != ann["suggested_name"]:
+                ann["suggested_name"] = suggested_text
+                st.session_state._do_autosave = True
+            else:
+                ann["suggested_name"] = suggested_text
         
         st.divider()
         
         st.markdown("#### 📝 Additional observations (optional)")
-        ann["notes"] = st.text_area(
+        notes_text = st.text_area(
             "Notes:",
             value=ann["notes"],
             placeholder="Any other feedback or observations?",
@@ -976,33 +1001,16 @@ def show_evaluation_page():
             key=f"notes_{cluster_cid}",
             label_visibility="collapsed"
         )
+        
+        # Trigger autosave if notes changed
+        if notes_text != ann["notes"]:
+            ann["notes"] = notes_text
+            st.session_state._do_autosave = True
+        else:
+            ann["notes"] = notes_text
 
     st.divider()
 
-    # Save/Export buttons
-    col1, col2, col3 = st.columns(3)
-
-    with col1:
-        if st.button("💾 Save Progress", use_container_width=True):
-            if save_user_annotations(st.session_state.user_name, st.session_state.annotations):
-                save_session_state()
-                st.success("✅ Progress saved!")
-            else:
-                st.error("❌ Failed to save progress")
-
-    with col2:
-        if st.button("⬆️ Auto-save", use_container_width=True):
-            if st.session_state.auto_save_enabled:
-                if save_user_annotations(st.session_state.user_name, st.session_state.annotations):
-                    save_session_state()
-                    st.toast("Auto-saved!")
-
-    with col3:
-        if st.button("🔄 Reset Cluster", use_container_width=True):
-            if cluster_cid in st.session_state.annotations:
-                del st.session_state.annotations[cluster_cid]
-                save_session_state()
-                st.rerun()
 
     st.divider()
     completed = sum(1 for c in clusters if is_cluster_evaluated(st.session_state.annotations, c.get("cid", f"cluster_{clusters.index(c)}")))
