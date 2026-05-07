@@ -362,6 +362,10 @@ def get_blurred_video_frame(video_path: Path, blur_radius: int = 20):
 
 def display_media(cluster_id, example_num, images, videos, label_category):
     """Display images and videos with blur/reveal toggles"""
+    # Labels where blur/reveal should be hidden
+    no_blur_labels = {"rude", "intolerant", "threat", "sexual-figurative", "porn", "nudity", "sexual"}
+    show_blur_controls = label_category not in no_blur_labels
+    
     col_left, col_media, col_right = st.columns([1, 2, 1])
     
     with col_media:
@@ -380,18 +384,23 @@ def display_media(cluster_id, example_num, images, videos, label_category):
                     if image_path.exists():
                         try:
                             img = Image.open(image_path)
-                            if image_key in st.session_state.unblurred_images:
-                                st.image(img, use_container_width=True)
-                                if st.button("🔒 Blur", key=f"blur_{image_key}", use_container_width=True):
-                                    st.session_state.unblurred_images.discard(image_key)
-                                    save_session_state()
+                            if show_blur_controls:
+                                # Show blur/reveal buttons for allowed labels
+                                if image_key in st.session_state.unblurred_images:
+                                    st.image(img, use_container_width=True)
+                                    if st.button("🔒 Blur", key=f"blur_{image_key}", use_container_width=True):
+                                        st.session_state.unblurred_images.discard(image_key)
+                                        save_session_state()
+                                else:
+                                    blurred_img = blur_image(str(image_path))
+                                    if blurred_img:
+                                        st.image(blurred_img, use_container_width=True)
+                                    if st.button("👁️ Reveal", key=f"unblur_{image_key}", use_container_width=True):
+                                        st.session_state.unblurred_images.add(image_key)
+                                        save_session_state()
                             else:
-                                blurred_img = blur_image(str(image_path))
-                                if blurred_img:
-                                    st.image(blurred_img, use_container_width=True)
-                                if st.button("👁️ Reveal", key=f"unblur_{image_key}", use_container_width=True):
-                                    st.session_state.unblurred_images.add(image_key)
-                                    save_session_state()
+                                # For protected labels, show image without blur controls
+                                st.image(img, use_container_width=True)
                         except Exception as e:
                             st.caption(f"Could not load image")
                     else:
@@ -412,20 +421,25 @@ def display_media(cluster_id, example_num, images, videos, label_category):
                     try:
                         with open(video_path, 'rb') as f:
                             video_bytes = f.read()
-                            if video_key in st.session_state.unblurred_images:
-                                st.video(video_bytes)
-                                if st.button("🔒 Blur", key=f"blur_vid_{video_key}", use_container_width=True):
-                                    st.session_state.unblurred_images.discard(video_key)
-                                    save_session_state()
-                            else:
-                                blurred_frame = get_blurred_video_frame(video_path)
-                                if blurred_frame:
-                                    st.image(blurred_frame, use_container_width=True)
+                            if show_blur_controls:
+                                # Show blur/reveal buttons for allowed labels
+                                if video_key in st.session_state.unblurred_images:
+                                    st.video(video_bytes)
+                                    if st.button("🔒 Blur", key=f"blur_vid_{video_key}", use_container_width=True):
+                                        st.session_state.unblurred_images.discard(video_key)
+                                        save_session_state()
                                 else:
-                                    st.info("🎬 Video (Blurred)")
-                                if st.button("👁️ Reveal Video", key=f"reveal_vid_{video_key}", use_container_width=True):
-                                    st.session_state.unblurred_images.add(video_key)
-                                    save_session_state()
+                                    blurred_frame = get_blurred_video_frame(video_path)
+                                    if blurred_frame:
+                                        st.image(blurred_frame, use_container_width=True)
+                                    else:
+                                        st.info("🎬 Video (Blurred)")
+                                    if st.button("👁️ Reveal Video", key=f"reveal_vid_{video_key}", use_container_width=True):
+                                        st.session_state.unblurred_images.add(video_key)
+                                        save_session_state()
+                            else:
+                                # For protected labels, show video without blur controls
+                                st.video(video_bytes)
                     except Exception as e:
                         pass
                 else:
@@ -447,20 +461,25 @@ def display_media(cluster_id, example_num, images, videos, label_category):
                             try:
                                 with open(video_path, 'rb') as f:
                                     video_bytes = f.read()
-                                    if video_key in st.session_state.unblurred_images:
-                                        st.video(video_bytes)
-                                        if st.button("🔒", key=f"blur_vid_{video_key}", use_container_width=True):
-                                            st.session_state.unblurred_images.discard(video_key)
-                                            save_session_state()
-                                    else:
-                                        blurred_frame = get_blurred_video_frame(video_path)
-                                        if blurred_frame:
-                                            st.image(blurred_frame, use_container_width=True)
+                                    if show_blur_controls:
+                                        # Show blur/reveal buttons for allowed labels
+                                        if video_key in st.session_state.unblurred_images:
+                                            st.video(video_bytes)
+                                            if st.button("🔒", key=f"blur_vid_{video_key}", use_container_width=True):
+                                                st.session_state.unblurred_images.discard(video_key)
+                                                save_session_state()
                                         else:
-                                            st.info("🎬 Blurred")
-                                        if st.button("👁️", key=f"reveal_vid_{video_key}", use_container_width=True):
-                                            st.session_state.unblurred_images.add(video_key)
-                                            save_session_state()
+                                            blurred_frame = get_blurred_video_frame(video_path)
+                                            if blurred_frame:
+                                                st.image(blurred_frame, use_container_width=True)
+                                            else:
+                                                st.info("🎬 Blurred")
+                                            if st.button("👁️", key=f"reveal_vid_{video_key}", use_container_width=True):
+                                                st.session_state.unblurred_images.add(video_key)
+                                                save_session_state()
+                                    else:
+                                        # For protected labels, show video without blur controls
+                                        st.video(video_bytes)
                             except Exception as e:
                                 pass
                         else:
