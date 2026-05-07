@@ -1119,8 +1119,8 @@ if st.session_state.user_name and st.session_state.user_name.lower() != "admin" 
     current_time = time.time()
     last_autosave = st.session_state.get("_last_autosave_time", 0)
     
-    # Only autosave every 3 seconds minimum to avoid excessive API calls
-    if current_time - last_autosave > 3:
+    # Only autosave every 1 second minimum to avoid excessive API calls
+    if current_time - last_autosave > 1:
         # Track last saved state to detect changes
         if "_last_saved_annotations" not in st.session_state:
             st.session_state._last_saved_annotations = {}
