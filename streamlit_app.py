@@ -1166,16 +1166,22 @@ else:
 
 # Auto-save functionality with Google Sheets integration (but not for admin user)
 if st.session_state.user_name and st.session_state.user_name.lower() != "admin" and st.session_state._do_autosave and st.session_state.annotations:
-    # Throttle autosave - only save if enough time has passed
+    # Track last saved state to detect changes
+    if "_last_saved_annotations" not in st.session_state:
+        st.session_state._last_saved_annotations = {}
+    
+    # Check if there are any brand NEW annotations (not yet in _last_saved_annotations)
+    has_new_annotations = any(
+        a.get("appropriateness_rating") is not None and cid not in st.session_state._last_saved_annotations
+        for cid, a in st.session_state.annotations.items()
+    )
+    
+    # Throttle autosave - only save if enough time has passed OR if there are new annotations
     current_time = time.time()
     last_autosave = st.session_state.get("_last_autosave_time", 0)
     
-    # Only autosave every 1 second minimum to avoid excessive API calls
-    if current_time - last_autosave > 1:
-        # Track last saved state to detect changes
-        if "_last_saved_annotations" not in st.session_state:
-            st.session_state._last_saved_annotations = {}
-        
+    # NEW annotations skip throttle, existing changes wait for 1 second minimum
+    if has_new_annotations or (current_time - last_autosave > 1):
         # Find annotations that need to be saved (new or changed)
         for cluster_cid, annotation in st.session_state.annotations.items():
             # Only save if rating is set (completed annotation)
