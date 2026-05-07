@@ -103,6 +103,35 @@ if "saved_annotation_ids" not in st.session_state:
     st.session_state.saved_annotation_ids = set()
 
 # ============================================================================
+# SYNC WITH GOOGLE SHEETS (runs on every app reload)
+# ============================================================================
+
+def sync_with_sheets():
+    """
+    Sync with Google Sheets on every app reload if user is logged in.
+    This ensures the interface reflects completed annotations from Sheets.
+    """
+    if st.session_state.user_name and st.session_state.user_name.lower() != "admin":
+        try:
+            # Fetch saved progress from Google Sheets
+            saved_annotations = fetch_saved_progress(st.session_state.user_name)
+            
+            if saved_annotations:
+                # Update local state with saved annotations
+                # Only add missing entries to preserve any local changes
+                for cid, annotation in saved_annotations.items():
+                    if cid not in st.session_state.annotations or st.session_state.annotations[cid].get("appropriateness_rating") is None:
+                        st.session_state.annotations[cid] = annotation
+                
+                st.session_state.saved_annotation_ids = set(saved_annotations.keys())
+        except Exception as e:
+            # Silently fail; continue with local data if Sheets unavailable
+            pass
+
+# Run sync on app startup if user is logged in
+sync_with_sheets()
+
+# ============================================================================
 # UTILITY FUNCTIONS
 # ============================================================================
 
@@ -121,6 +150,34 @@ def is_cluster_evaluated(annotations, cluster_cid):
     ann = annotations[cluster_cid]
     # Only count as evaluated if rating is explicitly set to a value
     return ann.get("appropriateness_rating") is not None
+
+def get_next_unannotated_cluster(current_idx, clusters, annotations):
+    """Find the next cluster that hasn't been annotated yet."""
+    for idx in range(current_idx, len(clusters)):
+        cid = clusters[idx].get("cid", f"cluster_{idx}")
+        if not is_cluster_evaluated(annotations, cid):
+            return idx
+    # If all from current_idx onwards are done, wrap to start
+    for idx in range(0, current_idx):
+        cid = clusters[idx].get("cid", f"cluster_{idx}")
+        if not is_cluster_evaluated(annotations, cid):
+            return idx
+    # All done
+    return current_idx
+
+def get_prev_unannotated_cluster(current_idx, clusters, annotations):
+    """Find the previous cluster that hasn't been annotated yet."""
+    for idx in range(current_idx, -1, -1):
+        cid = clusters[idx].get("cid", f"cluster_{idx}")
+        if not is_cluster_evaluated(annotations, cid):
+            return idx
+    # If all before current_idx are done, wrap to end
+    for idx in range(len(clusters) - 1, current_idx, -1):
+        cid = clusters[idx].get("cid", f"cluster_{idx}")
+        if not is_cluster_evaluated(annotations, cid):
+            return idx
+    # All done
+    return current_idx
 
 def sanitize_name(name):
     """Convert name to safe filename"""
@@ -984,8 +1041,9 @@ def show_evaluation_page():
     
     with col1:
         if st.button("⬅️ Previous", use_container_width=True, key="nav_prev_top"):
-            if st.session_state.current_cluster_idx > 0:
-                st.session_state.current_cluster_idx -= 1
+            next_idx = get_prev_unannotated_cluster(st.session_state.current_cluster_idx, clusters, st.session_state.annotations)
+            if next_idx != st.session_state.current_cluster_idx:
+                st.session_state.current_cluster_idx = next_idx
                 save_session_state()
             st.rerun()
 
@@ -995,8 +1053,9 @@ def show_evaluation_page():
 
     with col3:
         if st.button("Next ➡️", use_container_width=True, key="nav_next_top"):
-            if st.session_state.current_cluster_idx < len(clusters) - 1:
-                st.session_state.current_cluster_idx += 1
+            next_idx = get_next_unannotated_cluster(st.session_state.current_cluster_idx + 1, clusters, st.session_state.annotations)
+            if next_idx != st.session_state.current_cluster_idx or st.session_state.current_cluster_idx < len(clusters) - 1:
+                st.session_state.current_cluster_idx = next_idx
                 save_session_state()
             st.rerun()
     
@@ -1057,6 +1116,28 @@ def show_evaluation_page():
     st.divider()
     
     st.markdown("### Your Evaluation")
+    
+    # Check if this cluster is already completed
+    ann = st.session_state.annotations.get(cluster_cid, {})
+    if ann.get("appropriateness_rating") is not None:
+        st.success(f"✅ **Already completed!** You rated this cluster: {ann.get('appropriateness_rating')}/5")
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("⬇️ Skip to next", use_container_width=True):
+                next_idx = get_next_unannotated_cluster(st.session_state.current_cluster_idx + 1, clusters, st.session_state.annotations)
+                st.session_state.current_cluster_idx = next_idx
+                st.rerun()
+        with col2:
+            if st.button("🔄 Re-evaluate", use_container_width=True):
+                st.session_state.annotations[cluster_cid] = {
+                    "appropriateness_rating": None,
+                    "follow_up_answers": {},
+                    "suggested_name": "",
+                    "notes": "",
+                }
+                st.rerun()
+        st.divider()
+    
     # Show scores reference table
     st.markdown("#### Rating Guide")
     st.markdown("""
