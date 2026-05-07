@@ -65,7 +65,6 @@ def save_session_state():
             "user_name": st.session_state.user_name,
             "current_cluster_idx": st.session_state.current_cluster_idx,
             "annotations": st.session_state.annotations,
-            "unblurred_images": list(st.session_state.unblurred_images),
             "last_saved": datetime.now().isoformat()
         }
         with open(get_session_file(), "w") as f:
@@ -86,7 +85,9 @@ if "current_cluster_idx" not in st.session_state:
 if "clusters" not in st.session_state:
     st.session_state.clusters = []
 if "unblurred_images" not in st.session_state:
-    st.session_state.unblurred_images = set(session_data.get("unblurred_images", []))
+    # Always start with empty set - blur state should not persist across sessions
+    # This ensures each user session has a fresh blur/unblur state
+    st.session_state.unblurred_images = set()
 if "user_name" not in st.session_state:
     # IMPORTANT: Never auto-restore user_name from session file
     # Always start at login page for security/privacy
