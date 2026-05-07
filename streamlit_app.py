@@ -184,14 +184,9 @@ def sanitize_name(name):
     """Convert name to safe filename"""
     return name.lower().replace(" ", "_")
 
-def get_user_annotation_file(user_name):
-    """Get per-user annotation file path (single file for all labels)"""
-    safe_name = sanitize_name(user_name)
-    return Path("human_validation_samples") / f"annotations_{safe_name}.json"
-
 def load_user_annotations(user_name):
-    """Load user's annotations from consolidated file (all labels)"""
-    filepath = get_user_annotation_file(user_name)
+    """Load user's annotations from consolidated file (all labels) - FALLBACK only, Google Sheets is primary"""
+    filepath = Path("human_validation_samples") / f"annotations_{sanitize_name(user_name)}.json"
     
     if not filepath.exists():
         return {}
@@ -208,95 +203,8 @@ def load_user_annotations(user_name):
     except Exception as e:
         return {}
 
-def save_user_annotations(user_name, annotations):
-    """Save user's annotations to consolidated file (all labels with timestamp)"""
-    filepath = get_user_annotation_file(user_name)
-    filepath.parent.mkdir(parents=True, exist_ok=True)
-    
-    # Filter out incomplete annotations (those without a rating)
-    completed_annotations = {
-        cid: ann for cid, ann in annotations.items()
-        if ann.get("appropriateness_rating") is not None
-    }
-    
-    # Only save if there are completed evaluations
-    if not completed_annotations:
-        # If no completed evaluations, delete the file if it exists
-        if filepath.exists():
-            filepath.unlink()
-        return True
-    
-    data = {
-        "user_name": user_name,
-        "timestamp": datetime.now().isoformat(),
-        "annotations": completed_annotations
-    }
-    
-    try:
-        with open(filepath, "w") as f:
-            json.dump(data, f, indent=2)
-        st.session_state.last_saved = datetime.now().isoformat()
-        return True
-    except Exception as e:
-        return False
-
-def get_all_users_annotations():
-    """Load all user annotations from consolidated files (for admin) - excludes admin user"""
-    base_path = Path("human_validation_samples")
-    all_users_data = {}
-    
-    if not base_path.exists():
-        return all_users_data
-    
-    # Find all annotation files
-    for filepath in base_path.glob("annotations_*.json"):
-        try:
-            with open(filepath, "r") as f:
-                data = json.load(f)
-            
-            if isinstance(data, dict):
-                user_name = data.get("user_name", filepath.stem.replace("annotations_", ""))
-                
-                # Skip the admin user from the list
-                if user_name.lower() == "admin":
-                    continue
-                
-                timestamp = data.get("timestamp", "Unknown")
-                annotations = data.get("annotations", {})
-                
-                all_users_data[user_name] = {
-                    "annotations": annotations,
-                    "timestamp": timestamp,
-                    "count": len(annotations)
-                }
-        except:
-            pass
-    
-    return all_users_data
-
-def delete_user_annotations(user_name):
-    """Delete a specific user's annotations file"""
-    filepath = get_user_annotation_file(user_name)
-    if filepath.exists():
-        try:
-            filepath.unlink()
-            return True
-        except:
-            return False
-    return False
-
-def delete_all_annotations():
-    """Delete all user annotation files"""
-    base_path = Path("human_validation_samples")
-    if not base_path.exists():
-        return False
-    
-    try:
-        for filepath in base_path.glob("annotations_*.json"):
-            filepath.unlink()
-        return True
-    except:
-        return False
+# Note: save_user_annotations removed - now using Google Sheets only
+# Keeping load_user_annotations as fallback for offline/legacy support
 
 def download_and_extract_nextcloud(zip_url, extract_path="human_validation_samples"):
     """Download zipped data from Nextcloud and extract it"""
@@ -654,7 +562,7 @@ def show_dashboard_page():
     st.divider()
     
     # Quick actions
-    col1, col2, col3 = st.columns(3)
+    col1, col2 = st.columns(2)
     
     with col1:
         if st.button("▶️ Start Evaluation", use_container_width=True, key="start_eval"):
@@ -662,11 +570,6 @@ def show_dashboard_page():
             st.rerun()
     
     with col2:
-        if st.button("📊 View Summary", use_container_width=True, key="view_summary"):
-            st.session_state.app_page = "summary"
-            st.rerun()
-    
-    with col3:
         if st.button("👤 Logout", use_container_width=True, key="logout_btn"):
             # Clear session data for next user
             st.session_state.user_name = ""
@@ -696,311 +599,11 @@ def show_dashboard_page():
         else:
             st.caption("Not saved yet")
     
-    st.divider()
-    
-    # Debug/Diagnostics section
-    with st.expander("🔧 Diagnostics (Google Sheets Setup)"):
-        st.markdown("**Google Sheets Configuration:**")
-        col1, col2 = st.columns(2)
-        with col1:
-            has_url = bool(st.secrets.get("GOOGLE_APPS_SCRIPT_URL"))
-            status = "✅ Configured" if has_url else "❌ Not configured"
-            st.caption(f"GOOGLE_APPS_SCRIPT_URL: {status}")
-        with col2:
-            has_read_url = bool(st.secrets.get("GOOGLE_SHEET_READ_URL"))
-            status = "✅ Configured" if has_read_url else "❌ Not configured (will use main URL)"
-            st.caption(f"GOOGLE_SHEET_READ_URL: {status}")
-        
-        st.markdown("**Saved Annotations:**")
-        saved_count = len(st.session_state.saved_annotation_ids)
-        st.caption(f"Saved to Sheets: {saved_count} annotations")
-        st.caption(f"Local state: {len([a for a in st.session_state.annotations.values() if a.get('appropriateness_rating') is not None])} total")
-        
-        st.markdown("**Test Fetch:**")
-        if st.button("🔄 Manually sync with Google Sheets", use_container_width=True):
-            test_annotations = fetch_saved_progress(st.session_state.user_name)
-            if test_annotations:
-                st.success(f"✅ Found {len(test_annotations)} annotations in Google Sheets")
-                st.json({k: v["appropriateness_rating"] for k, v in test_annotations.items()})
-            else:
-                st.warning("⚠️ No annotations found in Google Sheets for this user. Check:")
-                st.markdown("""
-                - Is GOOGLE_SHEET_READ_URL (or GOOGLE_APPS_SCRIPT_URL) correctly set?
-                - Have you deployed the Google Apps Script?
-                - Is the username exactly matching what's in Google Sheets?
-                - Click 'Next' to make an annotation and try again
-                """)
-    
-    # Admin/Settings section
-    with st.expander("⚙️ Settings & Data Management"):
-        st.markdown("### Clear Data")
-        st.warning("⚠️ This action cannot be undone!")
-        
-        col1, col2 = st.columns(2)
-        with col1:
-            if st.button("🗑️ Clear My Annotations", use_container_width=True, key="clear_my_data"):
-                # Clear current user's annotations
-                user_file = get_user_annotation_file(st.session_state.user_name)
-                if user_file.exists():
-                    os.remove(user_file)
-                st.session_state.annotations = {}
-                st.success(f"✅ Cleared all annotations for {st.session_state.user_name}")
-                st.rerun()
-        
-        with col2:
-            if st.button("🗑️ Clear ALL Data", use_container_width=True, key="clear_all_data"):
-                st.session_state.show_confirm_clear = True
-        
-        if st.session_state.get("show_confirm_clear", False):
-            st.error("🚨 Are you sure? This will delete ALL user data!")
-            col1, col2 = st.columns(2)
-            with col1:
-                if st.button("✅ YES, Delete Everything", use_container_width=True, key="confirm_clear"):
 
-                    if SESSION_DIR.exists():
-                        shutil.rmtree(SESSION_DIR)
-                    # Clear all annotation files
-                    anno_dir = Path("human_validation_samples")
-                    if anno_dir.exists():
-                        for f in anno_dir.glob("annotations_*.json"):
-                            os.remove(f)
-                        export_file = anno_dir / "annotations_export.json"
-                        if export_file.exists():
-                            os.remove(export_file)
-                    st.session_state.annotations = {}
-                    st.session_state.user_name = ""
-                    st.session_state.show_confirm_clear = False
-                    st.success("✅ All data cleared!")
-                    st.rerun()
-            
-            with col2:
-                if st.button("❌ Cancel", use_container_width=True, key="cancel_clear"):
-                    st.session_state.show_confirm_clear = False
-                    st.rerun()
 
-def show_admin_page():
-    """Show admin panel with all users' annotations"""
-    st.title("👨‍💼 Admin Panel")
-    st.markdown(f"**Logged in as:** admin | [Logout](javascript:void(0))")
-    st.divider()
-    
-    # Get all users' data
-    all_users = get_all_users_annotations()
-    
-    if not all_users:
-        st.info("No annotations found yet")
-        return
-    
-    # Summary statistics
-    col1, col2, col3 = st.columns(3)
-    total_users = len(all_users)
-    total_annotations = sum(u["count"] for u in all_users.values())
-    
-    with col1:
-        st.metric("Total Users", total_users)
-    with col2:
-        st.metric("Total Annotations", total_annotations)
-    with col3:
-        avg_per_user = total_annotations / total_users if total_users > 0 else 0
-        st.metric("Avg per User", f"{avg_per_user:.1f}")
-    
-    st.divider()
-    
-    # Detailed user breakdown
-    st.markdown("### User Breakdown")
-    for user_name, user_data in sorted(all_users.items()):
-        with st.expander(f"👤 {user_name} - {user_data['count']} annotations"):
-            st.caption(f"Last updated: {user_data['timestamp']}")
-            
-            # Show annotations count by rating
-            annotations = user_data["annotations"]
-            ratings = {1: 0, 2: 0, 3: 0, 4: 0, 5: 0}
-            for ann in annotations.values():
-                rating = ann.get("appropriateness_rating")
-                if rating in ratings:
-                    ratings[rating] += 1
-            
-            col1, col2, col3, col4, col5 = st.columns(5)
-            with col1:
-                st.metric("⭐ Not Appropriate", ratings[1])
-            with col2:
-                st.metric("⭐⭐ Somewhat Inapp.", ratings[2])
-            with col3:
-                st.metric("⭐⭐⭐ Neutral", ratings[3])
-            with col4:
-                st.metric("⭐⭐⭐⭐ Somewhat App.", ratings[4])
-            with col5:
-                st.metric("⭐⭐⭐⭐⭐ Highly App.", ratings[5])
-            
-            # Download and delete buttons for individual user
-            col_d, col_del = st.columns(2)
-            
-            with col_d:
-                user_json = json.dumps(user_data["annotations"], indent=2)
-                st.download_button(
-                    label=f"⬇️ Download {user_name}'s Annotations",
-                    data=user_json,
-                    file_name=f"annotations_{user_name}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
-                    mime="application/json",
-                    use_container_width=True
-                )
-            
-            with col_del:
-                if st.button(f"🗑️ Delete {user_name}'s Data", use_container_width=True, key=f"delete_user_{user_name}"):
-                    st.session_state[f"confirm_delete_{user_name}"] = True
-            
-            # Confirmation dialog
-            if st.session_state.get(f"confirm_delete_{user_name}", False):
-                st.warning(f"⚠️ Are you sure you want to delete all annotations for {user_name}?")
-                col_conf1, col_conf2 = st.columns(2)
-                
-                with col_conf1:
-                    if st.button(f"✅ YES, Delete {user_name}'s Data", use_container_width=True, key=f"confirm_del_{user_name}"):
-                        if delete_user_annotations(user_name):
-                            st.session_state[f"confirm_delete_{user_name}"] = False
-                            st.success(f"✅ Deleted all annotations for {user_name}")
-                            st.rerun()
-                        else:
-                            st.error(f"❌ Failed to delete {user_name}'s data")
-                
-                with col_conf2:
-                    if st.button(f"❌ Cancel", use_container_width=True, key=f"cancel_del_{user_name}"):
-                        st.session_state[f"confirm_delete_{user_name}"] = False
-                        st.rerun()
-    
-    st.divider()
-    
-    # Download all data at once
-    all_data_json = json.dumps({
-        "exported_at": datetime.now().isoformat(),
-        "total_users": total_users,
-        "total_annotations": total_annotations,
-        "users": {u: user_data["annotations"] for u, user_data in all_users.items()}
-    }, indent=2)
-    
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        st.download_button(
-            label=f"📥 Download ALL Annotations ({total_users} users)",
-            data=all_data_json,
-            file_name=f"all_annotations_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
-            mime="application/json",
-            use_container_width=True
-        )
-    
-    with col2:
-        if st.button("🗑️ Delete ALL Data", use_container_width=True, key="delete_all_data_btn"):
-            st.session_state["confirm_delete_all"] = True
-    
-    with col3:
-        if st.button("👤 Logout", use_container_width=True, key="admin_logout"):
-            st.session_state.user_name = ""
-            st.session_state.app_page = "login"
-            st.rerun()
-    
-    # Confirmation dialog for delete all
-    if st.session_state.get("confirm_delete_all", False):
-        st.error("🚨 WARNING: This will DELETE ALL annotations for ALL users! This cannot be undone!")
-        col_conf1, col_conf2 = st.columns(2)
-        
-        with col_conf1:
-            if st.button("✅ YES, DELETE EVERYTHING", use_container_width=True, key="confirm_delete_all_btn"):
-                if delete_all_annotations():
-                    st.session_state["confirm_delete_all"] = False
-                    st.success("✅ All annotations deleted!")
-                    st.rerun()
-                else:
-                    st.error("❌ Failed to delete all annotations")
-        
-        with col_conf2:
-            if st.button("❌ Cancel - Keep Data", use_container_width=True, key="cancel_delete_all"):
-                st.session_state["confirm_delete_all"] = False
-                st.rerun()
+# Admin page removed - use Google Sheets directly for data management
 
-def show_summary_page():
-    """Show evaluation summary and statistics"""
-    # Reload annotations for current user to get latest state
-    st.session_state.annotations = load_user_annotations(st.session_state.user_name)
-    
-    clusters = st.session_state.clusters
-    annotations = st.session_state.annotations
-    
-    st.title("📊 Evaluation Summary")
-    st.divider()
-    
-    completed = sum(1 for c in clusters if is_cluster_evaluated(annotations, c.get("cid", f"cluster_{clusters.index(c)}")))
-    st.metric("Completed Evaluations", f"{completed}/{len(clusters)}")
-    
-    st.divider()
-    
-    # Evaluation breakdown
-    st.markdown("### Evaluation Breakdown")
-    
-    ratings = {1: 0, 2: 0, 3: 0, 4: 0, 5: 0, "none": 0}
-    
-    for c in clusters:
-        cid = c.get("cid", f"cluster_{clusters.index(c)}")
-        if is_cluster_evaluated(annotations, cid):
-            rating = annotations[cid].get("appropriateness_rating")
-            if rating:
-                ratings[rating] += 1
-        else:
-            ratings["none"] += 1
-    
-    if completed > 0:
-        col1, col2, col3, col4, col5 = st.columns(5)
-        with col1:
-            st.markdown(f"**⭐ Highly Appropriate**\n{ratings[5]}")
-        with col2:
-            st.markdown(f"**⭐ Somewhat Appropriate**\n{ratings[4]}")
-        with col3:
-            st.markdown(f"**⭐ Neutral**\n{ratings[3]}")
-        with col4:
-            st.markdown(f"**⭐ Somewhat Inappropriate**\n{ratings[2]}")
-        with col5:
-            st.markdown(f"**⭐ Not Appropriate**\n{ratings[1]}")
-    
-    st.divider()
-    
-    # Evaluated clusters list
-    st.markdown("### Evaluated Clusters")
-    
-    for idx, c in enumerate(clusters):
-        cid = c.get("cid", f"cluster_{idx}")
-        if is_cluster_evaluated(annotations, cid):
-            ann = annotations[cid]
-            rating = ann.get("appropriateness_rating", "N/A")
-            
-            # Star representation
-            stars = "⭐" * (rating if isinstance(rating, int) else 0)
-            
-            col1, col2, col3 = st.columns([1, 3, 1])
-            with col1:
-                st.caption(f"ID: {c.get('id', idx)}")
-            with col2:
-                st.caption(f"{c.get('cluster_name', 'N/A')}")
-            with col3:
-                st.caption(stars)
-    
-    st.divider()
-    
-    col1, col2 = st.columns(2)
-    with col1:
-        if st.button("⬅️ Back to Dashboard", use_container_width=True):
-            st.session_state.app_page = "dashboard"
-            st.rerun()
-    
-    with col2:
-        # For non-admin users, just show download button
-        if st.session_state.user_name and st.session_state.annotations:
-            personal_json = json.dumps(st.session_state.annotations, indent=2)
-            st.download_button(
-                label="⬇️ Download My Annotations",
-                data=personal_json,
-                file_name=f"annotations_{st.session_state.user_name}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
-                mime="application/json",
-                use_container_width=True
-            )
+# Summary page removed - dashboard shows progress directly
 
 def show_evaluation_page():
     """Show cluster evaluation page"""
@@ -1055,13 +658,6 @@ def show_evaluation_page():
                 st.rerun()
         
         st.divider()
-        
-        # Auto-save toggle
-        st.markdown("### Settings")
-        st.session_state.auto_save_enabled = st.toggle("Auto-save", st.session_state.auto_save_enabled)
-        
-        if st.session_state.last_saved != "Never":
-            st.caption(f"Last saved: {st.session_state.last_saved}")
     
     # Main content
     cluster = clusters[st.session_state.current_cluster_idx]
@@ -1278,8 +874,12 @@ def show_evaluation_page():
         st.warning("📝 Please answer these questions to help us refine the label")
         st.markdown("---")
         
+        # Ensure follow_up_answers has the needed keys
+        if "main_issue" not in ann["follow_up_answers"]:
+            ann["follow_up_answers"]["main_issue"] = None
+        
         st.markdown("#### 1️⃣ What is the main issue with this name?")
-        ann["follow_up_answers"]["main_issue"] = st.radio(
+        selected_issue = st.radio(
             "Select the primary concern:",
             options=[
                 "too_broad",
@@ -1296,20 +896,25 @@ def show_evaluation_page():
                 "other": "🤔 Other reason"
             }[x],
             horizontal=False,
-            key=f"main_issue_{cluster_cid}",
-            label_visibility="collapsed"
+            key=f"main_issue_{cluster_cid}_{st.session_state.rating_clear_counter.get(cluster_cid, 0)}",
+            label_visibility="collapsed",
+            index=None  # No default selection
         )
+        
+        if selected_issue is not None:
+            ann["follow_up_answers"]["main_issue"] = selected_issue
+            st.session_state._do_autosave = True
         
         st.markdown("---")
         
-        if ann["follow_up_answers"]["main_issue"] == "other":
+        if ann["follow_up_answers"].get("main_issue") == "other":
             st.markdown("#### 2️⃣ What's the specific issue with this name?")
             ann["follow_up_answers"]["missing_element"] = st.text_area(
                 "Please describe the issue:",
                 value=ann["follow_up_answers"].get("missing_element", ""),
                 placeholder="E.g., 'Should mention cryptocurrency scams' or 'Too vague about the specific activity'...",
                 height=80,
-                key=f"missing_{cluster_cid}",
+                key=f"missing_{cluster_cid}_{st.session_state.rating_clear_counter.get(cluster_cid, 0)}",
                 label_visibility="collapsed"
             )
             
@@ -1477,25 +1082,29 @@ st.title("🏷️ Cluster Label Validator")
 # Page routing
 if st.session_state.app_page == "login":
     show_login_page()
-elif st.session_state.app_page == "admin":
-    show_admin_page()
 elif st.session_state.app_page == "dashboard":
     show_dashboard_page()
 elif st.session_state.app_page == "evaluation":
     show_evaluation_page()
-elif st.session_state.app_page == "summary":
-    show_summary_page()
 else:
     show_login_page()
 
 # Auto-save functionality with Google Sheets integration (but not for admin user)
 if st.session_state.user_name and st.session_state.user_name.lower() != "admin" and st.session_state._do_autosave and st.session_state.annotations:
-    # Find newly completed annotations that haven't been saved yet
+    # Track last saved state to detect changes
+    if "_last_saved_annotations" not in st.session_state:
+        st.session_state._last_saved_annotations = {}
+    
+    # Find annotations that need to be saved (new or changed)
     for cluster_cid, annotation in st.session_state.annotations.items():
         # Only save if rating is set (completed annotation)
         if annotation.get("appropriateness_rating") is not None:
-            if cluster_cid not in st.session_state.saved_annotation_ids:
-                # Send to Google Sheets via Apps Script
+            # Check if this is a new annotation or if it has changed
+            last_saved = st.session_state._last_saved_annotations.get(cluster_cid, {})
+            has_changed = last_saved != annotation
+            
+            if has_changed:
+                # Send to Google Sheets via Apps Script (will create new row even if cluster_cid exists)
                 success, message = append_to_sheet(
                     st.session_state.user_name,
                     cluster_cid,
@@ -1504,6 +1113,7 @@ if st.session_state.user_name and st.session_state.user_name.lower() != "admin" 
                 
                 if success:
                     st.session_state.saved_annotation_ids.add(cluster_cid)
+                    st.session_state._last_saved_annotations[cluster_cid] = annotation.copy()
                     st.toast(f"✅ Progress saved ({len(st.session_state.saved_annotation_ids)}/{len([a for a in st.session_state.annotations.values() if a.get('appropriateness_rating') is not None])} annotations)")
                 else:
                     st.toast(message, icon="⚠️")
