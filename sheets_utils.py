@@ -136,8 +136,12 @@ def fetch_saved_progress(user_name: str) -> Dict[str, Dict]:
         read_endpoint = endpoint
     
     try:
+        # Add user_name as query parameter
+        separator = "&" if "?" in read_endpoint else "?"
+        url_with_params = f"{read_endpoint}{separator}user_name={user_name}"
+        
         success, response = get_retry_with_backoff(
-            read_endpoint,
+            url_with_params,
             method="GET",
             max_retries=2,
         )

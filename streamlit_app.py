@@ -125,7 +125,8 @@ def sync_with_sheets():
                 
                 st.session_state.saved_annotation_ids = set(saved_annotations.keys())
         except Exception as e:
-            # Silently fail; continue with local data if Sheets unavailable
+            # Log error for debugging
+            import traceback
             pass
 
 # Run sync on app startup if user is logged in
@@ -696,6 +697,39 @@ def show_dashboard_page():
             st.caption("Not saved yet")
     
     st.divider()
+    
+    # Debug/Diagnostics section
+    with st.expander("🔧 Diagnostics (Google Sheets Setup)"):
+        st.markdown("**Google Sheets Configuration:**")
+        col1, col2 = st.columns(2)
+        with col1:
+            has_url = bool(st.secrets.get("GOOGLE_APPS_SCRIPT_URL"))
+            status = "✅ Configured" if has_url else "❌ Not configured"
+            st.caption(f"GOOGLE_APPS_SCRIPT_URL: {status}")
+        with col2:
+            has_read_url = bool(st.secrets.get("GOOGLE_SHEET_READ_URL"))
+            status = "✅ Configured" if has_read_url else "❌ Not configured (will use main URL)"
+            st.caption(f"GOOGLE_SHEET_READ_URL: {status}")
+        
+        st.markdown("**Saved Annotations:**")
+        saved_count = len(st.session_state.saved_annotation_ids)
+        st.caption(f"Saved to Sheets: {saved_count} annotations")
+        st.caption(f"Local state: {len([a for a in st.session_state.annotations.values() if a.get('appropriateness_rating') is not None])} total")
+        
+        st.markdown("**Test Fetch:**")
+        if st.button("🔄 Manually sync with Google Sheets", use_container_width=True):
+            test_annotations = fetch_saved_progress(st.session_state.user_name)
+            if test_annotations:
+                st.success(f"✅ Found {len(test_annotations)} annotations in Google Sheets")
+                st.json({k: v["appropriateness_rating"] for k, v in test_annotations.items()})
+            else:
+                st.warning("⚠️ No annotations found in Google Sheets for this user. Check:")
+                st.markdown("""
+                - Is GOOGLE_SHEET_READ_URL (or GOOGLE_APPS_SCRIPT_URL) correctly set?
+                - Have you deployed the Google Apps Script?
+                - Is the username exactly matching what's in Google Sheets?
+                - Click 'Next' to make an annotation and try again
+                """)
     
     # Admin/Settings section
     with st.expander("⚙️ Settings & Data Management"):
