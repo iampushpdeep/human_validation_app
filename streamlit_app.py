@@ -928,6 +928,7 @@ def show_evaluation_page():
         if selected_issue is not None and ann["follow_up_answers"].get("main_issue") != selected_issue:
             ann["follow_up_answers"]["main_issue"] = selected_issue
             st.session_state._do_autosave = True
+            save_session_state()  # Persist the change immediately
         
         st.markdown("---")
         
@@ -946,6 +947,7 @@ def show_evaluation_page():
             if missing_text != ann["follow_up_answers"].get("missing_element", ""):
                 ann["follow_up_answers"]["missing_element"] = missing_text
                 st.session_state._do_autosave = True
+                save_session_state()
             else:
                 ann["follow_up_answers"]["missing_element"] = missing_text
             
@@ -971,6 +973,7 @@ def show_evaluation_page():
         if suggested_text != ann["suggested_name"]:
             ann["suggested_name"] = suggested_text
             st.session_state._do_autosave = True
+            save_session_state()
         else:
             ann["suggested_name"] = suggested_text
 
@@ -1022,6 +1025,7 @@ def show_evaluation_page():
         if notes_text != ann["notes"]:
             ann["notes"] = notes_text
             st.session_state._do_autosave = True
+            save_session_state()
         else:
             ann["notes"] = notes_text
 
