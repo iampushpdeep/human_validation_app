@@ -121,6 +121,8 @@ if "_do_autosave" not in st.session_state:
     st.session_state._do_autosave = False
 if "saved_annotation_ids" not in st.session_state:
     st.session_state.saved_annotation_ids = set()
+if "_just_synced" not in st.session_state:
+    st.session_state._just_synced = False
 
 # ============================================================================
 # SYNC WITH GOOGLE SHEETS (runs on every app reload)
@@ -137,6 +139,7 @@ def sync_with_sheets():
     
     if st.session_state.user_name and st.session_state.user_name.lower() != "admin":
         try:
+            import copy
             # Fetch saved progress from Google Sheets
             saved_annotations = fetch_saved_progress(st.session_state.user_name)
             
@@ -149,12 +152,14 @@ def sync_with_sheets():
                 
                 st.session_state.saved_annotation_ids = set(saved_annotations.keys())
                 
-                # Initialize _last_saved_annotations with the loaded data so autosave detects changes correctly
+                # Initialize _last_saved_annotations with DEEP COPIES of the loaded data
+                # This ensures autosave won't resave these as "new" or "changed"
                 if "_last_saved_annotations" not in st.session_state:
                     st.session_state._last_saved_annotations = {}
                 
                 for cid, annotation in saved_annotations.items():
-                    st.session_state._last_saved_annotations[cid] = annotation.copy()
+                    # Use deepcopy to properly handle nested dicts (follow_up_answers)
+                    st.session_state._last_saved_annotations[cid] = copy.deepcopy(annotation)
         except Exception as e:
             # Log error for debugging
             import traceback
@@ -162,6 +167,9 @@ def sync_with_sheets():
     
     # Mark as synced so we don't repeat this on every rerun
     st.session_state._synced_with_sheets = True
+    
+    # Mark that we just synced - used to prevent autosave on first rerun after sync
+    st.session_state._just_synced = True
 
 # Run sync on app startup if user is logged in
 sync_with_sheets()
@@ -1165,7 +1173,10 @@ else:
     show_login_page()
 
 # Auto-save functionality with Google Sheets integration (but not for admin user)
-if st.session_state.user_name and st.session_state.user_name.lower() != "admin" and st.session_state._do_autosave and st.session_state.annotations:
+# Skip autosave if we just synced (first rerun after loading from sheets)
+if (st.session_state.user_name and st.session_state.user_name.lower() != "admin" and 
+    st.session_state._do_autosave and st.session_state.annotations and 
+    not st.session_state._just_synced):
     # Track last saved state to detect changes
     if "_last_saved_annotations" not in st.session_state:
         st.session_state._last_saved_annotations = {}
@@ -1227,3 +1238,7 @@ if st.session_state.user_name and st.session_state.user_name.lower() != "admin" 
         st.session_state._do_autosave = False
         st.session_state._last_autosave_time = current_time
         save_session_state()
+
+# Clear _just_synced flag if it was set (to prevent skipping autosave on next rerun)
+if st.session_state._just_synced:
+    st.session_state._just_synced = False
