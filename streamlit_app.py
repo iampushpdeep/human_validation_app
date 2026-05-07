@@ -17,6 +17,14 @@ import time
 
 # Cached blur function for performance
 @st.cache_data
+def load_image(image_path_str):
+    """Cache and load images to avoid repeated disk I/O."""
+    try:
+        return Image.open(image_path_str)
+    except:
+        return None
+
+@st.cache_data
 def blur_image(image_path_str):
     """Cache blurred images to avoid recomputing on every render."""
     try:
@@ -340,6 +348,26 @@ def load_clusters_from_validation_data():
     return clusters_list if clusters_list else None
 
 @st.cache_data
+def get_video_frame(video_path: Path):
+    """Extract first frame from video (unblurred) - cached for instant reveal"""
+    if not HAS_CV2:
+        return None
+    
+    try:
+        cap = cv2.VideoCapture(str(video_path))
+        ret, frame = cap.read()
+        cap.release()
+        
+        if not ret:
+            return None
+        
+        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        img = Image.fromarray(frame)
+        return img
+    except Exception as e:
+        return None
+
+@st.cache_data
 def get_blurred_video_frame(video_path: Path, blur_radius: int = 20):
     """Extract first frame from video and blur it"""
     if not HAS_CV2:
@@ -384,11 +412,12 @@ def display_media(cluster_id, example_num, images, videos, label_category):
                 with cols[img_idx % len(cols)]:
                     if image_path.exists():
                         try:
-                            img = Image.open(image_path)
                             if show_blur_controls:
                                 # Show blur/reveal buttons for allowed labels
                                 if image_key in st.session_state.unblurred_images:
-                                    st.image(img, use_container_width=True)
+                                    img = load_image(str(image_path))
+                                    if img:
+                                        st.image(img, use_container_width=True)
                                     if st.button("🔒 Blur", key=f"blur_{image_key}", use_container_width=True):
                                         st.session_state.unblurred_images.discard(image_key)
                                 else:
@@ -399,7 +428,9 @@ def display_media(cluster_id, example_num, images, videos, label_category):
                                         st.session_state.unblurred_images.add(image_key)
                             else:
                                 # For protected labels, show image without blur controls
-                                st.image(img, use_container_width=True)
+                                img = load_image(str(image_path))
+                                if img:
+                                    st.image(img, use_container_width=True)
                         except Exception as e:
                             st.caption(f"Could not load image")
                     else:
