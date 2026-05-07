@@ -886,15 +886,18 @@ def show_evaluation_page():
             ann["follow_up_answers"]["main_issue"] = None
         
         st.markdown("#### 1️⃣ What is the main issue with this name?")
+        
+        # Determine which option is currently selected (for display)
+        issue_options = ["too_broad", "too_narrow", "misleading", "unclear", "other"]
+        current_issue = ann["follow_up_answers"].get("main_issue")
+        try:
+            current_index = issue_options.index(current_issue) if current_issue in issue_options else None
+        except ValueError:
+            current_index = None
+        
         selected_issue = st.radio(
             "Select the primary concern:",
-            options=[
-                "too_broad",
-                "too_narrow",
-                "misleading",
-                "unclear",
-                "other"
-            ],
+            options=issue_options,
             format_func=lambda x: {
                 "too_broad": "📊 Too broad - covers too many different types of content",
                 "too_narrow": "🔍 Too narrow - too specific for some examples",
@@ -905,7 +908,7 @@ def show_evaluation_page():
             horizontal=False,
             key=f"main_issue_{cluster_cid}_{st.session_state.rating_clear_counter.get(cluster_cid, 0)}",
             label_visibility="collapsed",
-            index=None  # No default selection
+            index=current_index  # Show currently selected value
         )
         
         # Only update and trigger autosave if selection actually changed
@@ -975,7 +978,7 @@ def show_evaluation_page():
                 value=ann["suggested_name"],
                 placeholder="Leave empty if you're satisfied with the current name...",
                 max_chars=90,
-                key=f"suggested_name_{cluster_cid}",
+                key=f"suggested_name_{cluster_cid}_{st.session_state.rating_clear_counter.get(cluster_cid, 0)}",
                 label_visibility="collapsed"
             )
             
