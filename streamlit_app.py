@@ -391,14 +391,12 @@ def display_media(cluster_id, example_num, images, videos, label_category):
                                     st.image(img, use_container_width=True)
                                     if st.button("🔒 Blur", key=f"blur_{image_key}", use_container_width=True):
                                         st.session_state.unblurred_images.discard(image_key)
-                                        save_session_state()
                                 else:
                                     blurred_img = blur_image(str(image_path))
                                     if blurred_img:
                                         st.image(blurred_img, use_container_width=True)
                                     if st.button("👁️ Reveal", key=f"unblur_{image_key}", use_container_width=True):
                                         st.session_state.unblurred_images.add(image_key)
-                                        save_session_state()
                             else:
                                 # For protected labels, show image without blur controls
                                 st.image(img, use_container_width=True)
@@ -428,7 +426,6 @@ def display_media(cluster_id, example_num, images, videos, label_category):
                                     st.video(video_bytes)
                                     if st.button("🔒 Blur", key=f"blur_vid_{video_key}", use_container_width=True):
                                         st.session_state.unblurred_images.discard(video_key)
-                                        save_session_state()
                                 else:
                                     blurred_frame = get_blurred_video_frame(video_path)
                                     if blurred_frame:
@@ -437,7 +434,6 @@ def display_media(cluster_id, example_num, images, videos, label_category):
                                         st.info("🎬 Video (Blurred)")
                                     if st.button("👁️ Reveal Video", key=f"reveal_vid_{video_key}", use_container_width=True):
                                         st.session_state.unblurred_images.add(video_key)
-                                        save_session_state()
                             else:
                                 # For protected labels, show video without blur controls
                                 st.video(video_bytes)
@@ -468,7 +464,6 @@ def display_media(cluster_id, example_num, images, videos, label_category):
                                             st.video(video_bytes)
                                             if st.button("🔒", key=f"blur_vid_{video_key}", use_container_width=True):
                                                 st.session_state.unblurred_images.discard(video_key)
-                                                save_session_state()
                                         else:
                                             blurred_frame = get_blurred_video_frame(video_path)
                                             if blurred_frame:
@@ -477,7 +472,6 @@ def display_media(cluster_id, example_num, images, videos, label_category):
                                                 st.info("🎬 Blurred")
                                             if st.button("👁️", key=f"reveal_vid_{video_key}", use_container_width=True):
                                                 st.session_state.unblurred_images.add(video_key)
-                                                save_session_state()
                                     else:
                                         # For protected labels, show video without blur controls
                                         st.video(video_bytes)
