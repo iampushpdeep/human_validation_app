@@ -1198,9 +1198,39 @@ if not st.session_state.clusters and not st.session_state.clusters_loaded_attemp
                     # IMPORTANT: Rerun to refresh the page with loaded clusters
                     st.rerun()
                 else:
-                    # Download succeeded but loading failed - show error and don't retry
+                    # Download succeeded but loading failed - show detailed error
                     print("[DEBUG] Download succeeded but load_clusters_from_validation_data() returned None")
-                    st.error("❌ Downloaded data but couldn't load clusters - check logs for details")
+                    st.error("❌ Downloaded data but couldn't load clusters")
+                    
+                    # Show diagnostic info
+                    script_dir = Path(__file__).parent.resolve()
+                    base_path = script_dir / "human_validation_samples"
+                    
+                    with st.expander("📋 Diagnostic Information"):
+                        st.write(f"**Looking for clusters in:** `{base_path}`")
+                        st.write(f"**Path exists:** {base_path.exists()}")
+                        
+                        if base_path.exists():
+                            contents = list(base_path.iterdir())
+                            st.write(f"**Directory contents ({len(contents)} items):**")
+                            for item in sorted(contents):
+                                if item.is_dir():
+                                    metadata_path = item / "metadata.json"
+                                    has_metadata = "✅" if metadata_path.exists() else "❌"
+                                    st.write(f"  📁 {item.name} {has_metadata}")
+                                else:
+                                    st.write(f"  📄 {item.name}")
+                            
+                            # Check for metadata.json files
+                            metadata_files = list(base_path.glob("*/metadata.json"))
+                            st.write(f"**Metadata files found:** {len(metadata_files)}")
+                            for mf in metadata_files:
+                                st.write(f"  ✅ {mf.relative_to(base_path)}")
+                        
+                        st.write("**Next steps:**")
+                        st.write("1. Check that Nextcloud share link is correct in Secrets")
+                        st.write("2. Verify the downloaded zip contains label directories (nudity, rude, etc.)")
+                        st.write("3. Each label directory should have a `metadata.json` file")
             # Don't reset flag - we attempted once, that's enough per session
         else:
             print("[DEBUG] No Nextcloud URL configured in secrets")
