@@ -280,6 +280,11 @@ def download_and_extract_nextcloud(zip_url, extract_path="human_validation_sampl
         if existing_contents:
             st.info("✅ Cluster data already exists locally, skipping download.")
             return True
+        else:
+            # Directory exists but no metadata files - it's incomplete/invalid
+            # Clear it so we can extract fresh
+            print(f"[DEBUG] Directory exists but has no valid cluster data - clearing for fresh extraction")
+            shutil.rmtree(extract_path)
     else:
         print(f"[DEBUG] Extract path does not exist yet")
     
@@ -334,9 +339,15 @@ def download_and_extract_nextcloud(zip_url, extract_path="human_validation_sampl
         final_contents = list(extract_path.iterdir())
         print(f"[DEBUG] Final extracted contents: {[item.name for item in final_contents]}")
         metadata_files = list(extract_path.glob("*/metadata.json"))
-        print(f"[DEBUG] Final metadata files found: {[str(m) for m in metadata_files]}")
+        print(f"[DEBUG] Final metadata files found: {len(metadata_files)} - {[str(m) for m in metadata_files]}")
         
-        st.success("✅ Data downloaded and extracted successfully!")
+        # Validate that extraction was successful
+        if not metadata_files:
+            st.error("❌ Extraction completed but no metadata files found - zip structure may be invalid")
+            print(f"[DEBUG] ERROR: Extraction succeeded but no metadata.json files found!")
+            return False
+        
+        st.success(f"✅ Data downloaded and extracted successfully! Found {len(metadata_files)} label categories.")
         return True
     except Exception as e:
         st.error(f"❌ Error downloading data: {str(e)}")
@@ -608,6 +619,10 @@ def show_login_page():
             if st.button("✅ Continue", use_container_width=True):
                 if user_name and len(user_name.strip()) > 0:
                     st.session_state.user_name = user_name.strip()
+                    
+                    # Reset cluster loading flag to allow retry on login
+                    # (in case first attempt failed)
+                    st.session_state.clusters_loaded_attempted = False
                     
                     # Check if this is admin user
                     if st.session_state.user_name.lower() == "admin":
