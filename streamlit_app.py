@@ -261,12 +261,27 @@ def load_user_annotations(user_name):
 
 def download_and_extract_nextcloud(zip_url, extract_path="human_validation_samples"):
     """Download zipped data from Nextcloud and extract it"""
-    extract_path = Path(extract_path)
+    # Make path absolute relative to script location if it's relative
+    if isinstance(extract_path, str) and not extract_path.startswith("/"):
+        # Get the directory where this script is located
+        script_dir = Path(__file__).parent.resolve()
+        extract_path = script_dir / extract_path
+    else:
+        extract_path = Path(extract_path)
+    
+    # Debug: Show where we're extracting to
+    print(f"[DEBUG] Extract path: {extract_path}")
     
     # Check if data already exists locally
-    if extract_path.exists() and list(extract_path.glob("*/metadata.json")):
-        st.info("✅ Cluster data already exists locally, skipping download.")
-        return True
+    if extract_path.exists():
+        existing_contents = list(extract_path.glob("*/metadata.json"))
+        print(f"[DEBUG] Extract path exists, metadata files found: {len(existing_contents)}")
+        print(f"[DEBUG] Extract path contents: {list(extract_path.iterdir())}")
+        if existing_contents:
+            st.info("✅ Cluster data already exists locally, skipping download.")
+            return True
+    else:
+        print(f"[DEBUG] Extract path does not exist yet")
     
     try:
         # Ensure the URL includes /download to get the actual file
@@ -281,6 +296,10 @@ def download_and_extract_nextcloud(zip_url, extract_path="human_validation_sampl
             extract_path.mkdir(parents=True, exist_ok=True)
             with zipfile.ZipFile(io.BytesIO(response.content)) as zip_ref:
                 zip_ref.extractall(extract_path)
+        
+        print(f"[DEBUG] Extracted to: {extract_path}")
+        extracted_contents = list(extract_path.iterdir())
+        print(f"[DEBUG] Extracted contents after extraction: {[item.name for item in extracted_contents]}")
         
         # Handle nested folder structure (if zip had a single parent folder)
         items = list(extract_path.iterdir())
@@ -300,21 +319,38 @@ def download_and_extract_nextcloud(zip_url, extract_path="human_validation_sampl
                     src.rename(dst)
                 nested_dir.rmdir()
         
+        final_contents = list(extract_path.iterdir())
+        print(f"[DEBUG] Final extracted contents: {[item.name for item in final_contents]}")
+        metadata_files = list(extract_path.glob("*/metadata.json"))
+        print(f"[DEBUG] Final metadata files found: {[str(m) for m in metadata_files]}")
+        
         st.success("✅ Data downloaded and extracted successfully!")
         return True
     except Exception as e:
         st.error(f"❌ Error downloading data: {str(e)}")
+        print(f"[DEBUG] Download error: {e}")
         return False
 
 def load_clusters_from_validation_data():
     """Load clusters from all label directories in human_validation_samples"""
-    base_path = Path("human_validation_samples")
+    # Use absolute path relative to script location
+    script_dir = Path(__file__).parent.resolve()
+    base_path = script_dir / "human_validation_samples"
+    
+    print(f"[DEBUG] Looking for clusters in: {base_path}")
+    print(f"[DEBUG] Path exists: {base_path.exists()}")
     
     if not base_path.exists():
+        print(f"[DEBUG] Base path does not exist: {base_path}")
         return None
     
     clusters_list = []
-    label_dirs = [item for item in base_path.iterdir() if item.is_dir() and not item.name.startswith(".") and not item.name.startswith("annotations_")]
+    all_items = list(base_path.iterdir())
+    print(f"[DEBUG] All items in base_path: {[item.name for item in all_items]}")
+    
+    label_dirs = [item for item in all_items if item.is_dir() and not item.name.startswith(".") and not item.name.startswith("annotations_")]
+    
+    print(f"[DEBUG] Found label directories: {[d.name for d in label_dirs]}")
     
     # Iterate through all label directories
     for label_dir in sorted(label_dirs):
@@ -1147,6 +1183,7 @@ if not st.session_state.clusters and not st.session_state.clusters_loaded_attemp
     clusters_data = load_clusters_from_validation_data()
     if clusters_data:
         st.session_state.clusters = clusters_data
+        print(f"[DEBUG] Loaded {len(clusters_data)} clusters from local data")
     else:
         # No clusters found locally - try to download from Nextcloud
         nextcloud_url = st.secrets.get("sharecloudlink")
@@ -1157,14 +1194,16 @@ if not st.session_state.clusters and not st.session_state.clusters_loaded_attemp
                 clusters_data = load_clusters_from_validation_data()
                 if clusters_data:
                     st.session_state.clusters = clusters_data
+                    print(f"[DEBUG] Loaded {len(clusters_data)} clusters after download")
                     # IMPORTANT: Rerun to refresh the page with loaded clusters
                     st.rerun()
                 else:
-                    # Download succeeded but loading failed - reset flag to retry
-                    st.session_state.clusters_loaded_attempted = False
-            else:
-                # Download failed - reset flag to allow retry
-                st.session_state.clusters_loaded_attempted = False
+                    # Download succeeded but loading failed - show error and don't retry
+                    print("[DEBUG] Download succeeded but load_clusters_from_validation_data() returned None")
+                    st.error("❌ Downloaded data but couldn't load clusters - check logs for details")
+            # Don't reset flag - we attempted once, that's enough per session
+        else:
+            print("[DEBUG] No Nextcloud URL configured in secrets")
 
 # If clusters still missing, show error
 # Use .get() for defensive checking to avoid KeyError
