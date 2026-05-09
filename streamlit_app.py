@@ -302,22 +302,34 @@ def download_and_extract_nextcloud(zip_url, extract_path="human_validation_sampl
         print(f"[DEBUG] Extracted contents after extraction: {[item.name for item in extracted_contents]}")
         
         # Handle nested folder structure (if zip had a single parent folder)
+        # Filter out system folders like __MACOSX and .DS_Store
         items = list(extract_path.iterdir())
-        non_annotation_items = [item for item in items if not item.name.startswith("annotations_")]
+        valid_items = [item for item in items if not item.name.startswith("__") and not item.name.startswith(".") and not item.name.startswith("annotations_")]
         
-        if len(non_annotation_items) == 1 and non_annotation_items[0].is_dir():
-            nested_dir = non_annotation_items[0]
-            nested_items = list(nested_dir.iterdir())
+        print(f"[DEBUG] Valid items (after filtering system folders): {[item.name for item in valid_items]}")
+        
+        # If there's exactly one directory and it's not a label directory, assume it's a wrapper
+        if len(valid_items) == 1 and valid_items[0].is_dir():
+            potential_wrapper = valid_items[0]
+            # Check if this directory contains label directories with metadata.json
+            wrapper_contents = list(potential_wrapper.iterdir())
+            has_label_dirs = any((potential_wrapper / item.name / "metadata.json").exists() for item in wrapper_contents if (potential_wrapper / item.name).is_dir() and not item.name.startswith("__") and not item.name.startswith("."))
             
-            # If the nested folder contains label directories, move them up
-            if nested_items and any((nested_dir / item.name / "metadata.json").exists() for item in nested_items if (nested_dir / item.name).is_dir()):
-                for item in nested_items:
-                    src = nested_dir / item.name
-                    dst = extract_path / item.name
-                    if dst.exists():
-                        shutil.rmtree(dst)
-                    src.rename(dst)
+            if has_label_dirs:
+                print(f"[DEBUG] Found wrapper directory: {potential_wrapper.name}")
+                nested_dir = potential_wrapper
+                # Move all label directories from wrapper to root
+                for item in wrapper_contents:
+                    if item.is_dir() and not item.name.startswith("__") and not item.name.startswith("."):
+                        src = nested_dir / item.name
+                        dst = extract_path / item.name
+                        if dst.exists():
+                            shutil.rmtree(dst)
+                        src.rename(dst)
+                        print(f"[DEBUG] Moved {item.name} from {nested_dir.name} to root")
+                # Remove the now-empty wrapper
                 nested_dir.rmdir()
+                print(f"[DEBUG] Removed empty wrapper: {nested_dir.name}")
         
         final_contents = list(extract_path.iterdir())
         print(f"[DEBUG] Final extracted contents: {[item.name for item in final_contents]}")
