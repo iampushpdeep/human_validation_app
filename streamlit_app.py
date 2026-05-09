@@ -934,13 +934,13 @@ def show_evaluation_page():
     # Show scores reference table
     st.markdown("#### Rating Guide")
     st.markdown("""
-| Score | Meaning |
-|-------|---------|
-| 5 | ✅ **Highly appropriate** - The name clearly and accurately represents all the content in this cluster. It's specific, unambiguous, and perfectly captures the essence of the posts. |
-| 4 | 👍 **Somewhat appropriate** - The name is mostly accurate and describes the general theme well, though there might be minor issues or slight room for improvement. |
-| 3 | 🤷 **Neutral** - The name is partially accurate but has noticeable gaps or ambiguities. Some posts fit well, others don't. Improvements would be beneficial. |
-| 2 | 👎 **Somewhat inappropriate** - The name has significant issues. Many posts don't fit well, or the name is confusing/misleading in important ways. |
-| 1 | ❌ **Not appropriate** - The name is misleading, irrelevant, or completely misrepresents the content. It fails to capture what these posts are about. |
+| Score | Label | Meaning |
+|-------|-------|---------|
+| 5 | **Very Appropriate** | ✅ The name clearly and accurately represents all the content in this cluster. It's specific, unambiguous, and perfectly captures the essence of the posts. |
+| 4 | **Appropriate** | 👍 The name is mostly accurate and describes the general theme well, though there might be minor issues or slight room for improvement. |
+| 3 | **Neutral** | 🤷 The name is partially accurate but has noticeable gaps or ambiguities. Some posts fit well, others don't. Improvements would be beneficial. |
+| 2 | **Inappropriate** | 👎 The name has significant issues. Many posts don't fit well, or the name is confusing/misleading in important ways. |
+| 1 | **Very Inappropriate** | ❌ The name is misleading, irrelevant, or completely misrepresents the content. It fails to capture what these posts are about. |
 """)
 
     # Initialize annotation if doesn't exist
