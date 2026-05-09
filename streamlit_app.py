@@ -1151,11 +1151,20 @@ if not st.session_state.clusters and not st.session_state.clusters_loaded_attemp
         # No clusters found locally - try to download from Nextcloud
         nextcloud_url = st.secrets.get("sharecloudlink")
         if nextcloud_url:
-            if download_and_extract_nextcloud(nextcloud_url):
+            download_success = download_and_extract_nextcloud(nextcloud_url)
+            if download_success:
                 # Reload clusters after download
                 clusters_data = load_clusters_from_validation_data()
                 if clusters_data:
                     st.session_state.clusters = clusters_data
+                    # IMPORTANT: Rerun to refresh the page with loaded clusters
+                    st.rerun()
+                else:
+                    # Download succeeded but loading failed - reset flag to retry
+                    st.session_state.clusters_loaded_attempted = False
+            else:
+                # Download failed - reset flag to allow retry
+                st.session_state.clusters_loaded_attempted = False
 
 # If clusters still missing, show error
 # Use .get() for defensive checking to avoid KeyError
