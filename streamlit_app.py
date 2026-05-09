@@ -123,10 +123,13 @@ if "saved_annotation_ids" not in st.session_state:
     st.session_state.saved_annotation_ids = set()
 if "_just_synced" not in st.session_state:
     st.session_state._just_synced = False
+if "_synced_with_user" not in st.session_state:
+    st.session_state._synced_with_user = None
 
 # ============================================================================
 # SYNC WITH GOOGLE SHEETS (runs on every app reload)
 # ============================================================================
+
 
 def sync_with_sheets():
     """
@@ -1155,7 +1158,8 @@ if not st.session_state.clusters and not st.session_state.clusters_loaded_attemp
                     st.session_state.clusters = clusters_data
 
 # If clusters still missing, show error
-if not st.session_state.clusters and st.session_state.app_page != "login":
+# Use .get() for defensive checking to avoid KeyError
+if not st.session_state.get("clusters") and st.session_state.get("app_page") != "login":
     st.title("🏷️ Cluster Label Validator")
     st.divider()
     st.error("❌ No cluster data available!")
